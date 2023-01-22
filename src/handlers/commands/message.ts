@@ -27,8 +27,9 @@ async function createTopic(ctx: MyContext) {
   const mainMessage = await ctx.api.sendMessage(
     chatId,
     `
-<b>🧑 user:</b> <a href="tg://user?id=${ctx.from.id}">${name}</a>
-<b>📱 id:</b> <code>${ctx.from.id}</code>
+🧑 <code>${name}</code> (@${ctx.from.username}) - <i><a href="tg://user?id=${ctx.from.id}">mention</a></i>
+
+<b>id:</b> <code>${ctx.from.id}</code>
 
 <b>🌎 language:</b> ${ctx.from.language_code}
     `,
@@ -131,6 +132,8 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
         return ctx.reply("User blocked the bot", {
           message_thread_id: ctx.message.message_thread_id,
         });
+      } else if (error.description.includes("can't be copied")) {
+        return;
       }
 
       throw new Error(error);

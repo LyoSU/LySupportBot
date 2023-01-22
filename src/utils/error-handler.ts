@@ -4,10 +4,10 @@ import { logger } from ".";
 
 async function errorHandler(err: BotError<MyContext>) {
   const ctx: MyContext = err.ctx;
-  const timeout: number = Date.now() - ctx["_start"];
-  logger.error(
-    `Process update [ID:${ctx.update.update_id}]: [failed] (in ${timeout}ms)`
-  );
+  // const timeout: number = Date.now() - ctx["_start"];
+  // logger.error(
+  //   `Process update [ID:${ctx.update.update_id}]: [failed] (in ${timeout}ms)`
+  // );
   const e = err.error;
   if (e instanceof BotError) {
     logger.error(`Error in bot: ${e.ctx}`);
