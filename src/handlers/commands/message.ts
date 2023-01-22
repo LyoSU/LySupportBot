@@ -27,9 +27,10 @@ async function createTopic(ctx: MyContext) {
   const mainMessage = await ctx.api.sendMessage(
     chatId,
     `
-  <b>🧑 user:</b> <a href="tg://user?id=${ctx.from.id}">${name}</a>
+<b>🧑 user:</b> <a href="tg://user?id=${ctx.from.id}">${name}</a>
+<b>📱 id:</b> <code>${ctx.from.id}</code>
 
-  <b>🌎 language:</b> ${ctx.from.language_code}
+<b>🌎 language:</b> ${ctx.from.language_code}
     `,
     {
       message_thread_id: telegramTopic.message_thread_id,
