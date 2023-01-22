@@ -1,4 +1,4 @@
-import { Update } from "@grammyjs/types"
+import { Update } from "@grammyjs/types";
 
 const allowedUpdates: ReadonlyArray<Exclude<keyof Update, "update_id">> = [
   "message",
@@ -9,6 +9,7 @@ const allowedUpdates: ReadonlyArray<Exclude<keyof Update, "update_id">> = [
   "pre_checkout_query",
   "my_chat_member",
   "chat_member",
-]
+  "edited_message",
+];
 
-export default allowedUpdates
+export default allowedUpdates;

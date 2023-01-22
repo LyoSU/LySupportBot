@@ -143,9 +143,19 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
     });
 }
 
+async function editMessage(ctx: MyContext) {
+  await ctx.reply(
+    "🚫 Edit message not supported yet, send a new message instead",
+    {
+      reply_to_message_id: ctx.editedMessage.message_id,
+    }
+  );
+}
+
 async function setup(bot: Bot<MyContext>) {
   bot.filter(isPrivate).on("message", anyPrivateMessage);
   bot.filter(isGroup).on("message", anyGroupMessage);
+  bot.on("edited_message", editMessage);
 }
 
 export default { setup };
