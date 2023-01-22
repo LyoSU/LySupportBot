@@ -48,8 +48,10 @@ async function createTopic(ctx: MyContext) {
     }
   );
 
-  await ctx.api.pinChatMessage(chatId, mainMessage.message_id, {
-    disable_notification: true,
+  await ctx.api.unpinChatMessage(chatId, mainMessage.message_id).then(() => {
+    ctx.api.pinChatMessage(chatId, mainMessage.message_id, {
+      disable_notification: true,
+    });
   });
 
   await ctx.database.Topics.deleteMany({
@@ -85,26 +87,25 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     return ctx.reply("You are banned");
   }
 
-  await ctx.api
-    .copyMessage(chatId, ctx.chat.id, ctx.message.message_id, {
-      message_thread_id: topic.thread_id,
-    })
-    .catch(async (error) => {
-      if (error.description.includes("thread not found")) {
-        topic = await createTopic(ctx);
+  let sendMethod = "copyMessage";
 
-        return ctx.api.copyMessage(
-          chatId,
-          ctx.chat.id,
-          ctx.message.message_id,
-          {
-            message_thread_id: topic.thread_id,
-          }
-        );
-      }
+  if (ctx.message.forward_from) {
+    sendMethod = "forwardMessage";
+  }
 
-      throw new Error(error);
-    });
+  await ctx.api[sendMethod](chatId, ctx.chat.id, ctx.message.message_id, {
+    message_thread_id: topic.thread_id,
+  }).catch(async (error) => {
+    if (error.description.includes("thread not found")) {
+      topic = await createTopic(ctx);
+
+      return ctx.api.copyMessage(chatId, ctx.chat.id, ctx.message.message_id, {
+        message_thread_id: topic.thread_id,
+      });
+    }
+
+    throw new Error(error);
+  });
 }
 
 async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {

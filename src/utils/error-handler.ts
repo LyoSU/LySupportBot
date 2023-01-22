@@ -19,7 +19,11 @@ async function errorHandler(err: BotError<MyContext>) {
     logger.error(`Unknown error: ${e}`);
   }
 
-  await ctx.reply(ctx.t("error")).catch(() => {});
+  try {
+    await ctx.reply(ctx.t("error")).catch(() => {});
+  } catch (error) {
+    logger.error(`Error in reply: ${error}`);
+  }
 }
 
 export default errorHandler;
