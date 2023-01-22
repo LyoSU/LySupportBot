@@ -125,7 +125,7 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
   }
 
   await ctx.api
-    .copyMessage(3, ctx.chat.id, ctx.message.message_id)
+    .copyMessage(topic.user.telegram_id, ctx.chat.id, ctx.message.message_id)
     .catch(async (error) => {
       if (error.description.includes("blocked")) {
         return ctx.reply("User blocked the bot", {
