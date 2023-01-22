@@ -17,7 +17,7 @@ async function createTopic(ctx: MyContext) {
         ctx.api.sendMessage(chatId, ctx.t("not_enough_rights"));
       }
 
-      return error;
+      throw new Error(error);
     });
 
   if (telegramTopic instanceof Error) {
@@ -102,7 +102,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
         );
       }
 
-      return error;
+      throw new Error(error);
     });
 }
 
@@ -124,11 +124,17 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
     return;
   }
 
-  await ctx.api.copyMessage(
-    topic.user.telegram_id,
-    ctx.chat.id,
-    ctx.message.message_id
-  );
+  await ctx.api
+    .copyMessage(3, ctx.chat.id, ctx.message.message_id)
+    .catch(async (error) => {
+      if (error.description.includes("blocked")) {
+        return ctx.reply("User blocked the bot", {
+          message_thread_id: ctx.message.message_thread_id,
+        });
+      }
+
+      throw new Error(error);
+    });
 }
 
 async function setup(bot: Bot<MyContext>) {
