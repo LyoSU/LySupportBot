@@ -17,7 +17,7 @@ async function start() {
   await connectMongoose();
 
   app.use(express.json());
-  app.use(`/supportBot/`, async (req, res) => {
+  app.use(async (req, res) => {
     const token = req.query.token;
 
     if (!token) {
@@ -36,7 +36,7 @@ async function start() {
     const bot = new Bot<MyContext, MyApi>(String(process.env.BOT_TOKEN));
 
     await bot.api.setWebhook(
-      `https://${domain}/supportBot/?token=${String(process.env.BOT_TOKEN)}`,
+      `https://${domain}/?token=${String(process.env.BOT_TOKEN)}`,
       {
         allowed_updates: allowedUpdates,
       }
