@@ -50,11 +50,11 @@ async function createTopic(ctx: MyContext) {
     }
   );
 
-  await ctx.api.unpinChatMessage(chatId, mainMessage.message_id).then(() => {
-    ctx.api.pinChatMessage(chatId, mainMessage.message_id, {
-      disable_notification: true,
-    });
-  });
+  // await ctx.api.unpinChatMessage(chatId, mainMessage.message_id).then(() => {
+  //   ctx.api.pinChatMessage(chatId, mainMessage.message_id, {
+  //     disable_notification: true,
+  //   });
+  // });
 
   await ctx.database.Topics.deleteMany({
     bot: ctx.session.bot,
