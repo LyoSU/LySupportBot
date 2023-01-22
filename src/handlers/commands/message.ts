@@ -24,10 +24,12 @@ async function createTopic(ctx: MyContext) {
     return;
   }
 
+  const usernameText = ctx.from.username ? ` (@${ctx.from?.username}) ` : "";
+
   const mainMessage = await ctx.api.sendMessage(
     chatId,
     `
-🧑 <code>${name}</code> (@${ctx.from?.username}) - <i><a href="tg://user?id=${ctx.from.id}">mention</a></i>
+🧑 <code>${name}</code>${usernameText}- <i><a href="tg://user?id=${ctx.from.id}">mention</a></i>
 
 <b>id:</b> <code>${ctx.from.id}</code>
 
