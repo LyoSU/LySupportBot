@@ -29,7 +29,7 @@ async function banUser(ctx: MyContext) {
         [
           {
             text: "🔓 Unban",
-            callback_data: `unban:${ctx.from.id}`,
+            callback_data: `unban:${ctx.match[1]}`,
           },
         ],
       ],
@@ -72,7 +72,7 @@ async function unbanUser(ctx: MyContext) {
         [
           {
             text: "🚫 Ban",
-            callback_data: `ban:${ctx.from.id}`,
+            callback_data: `ban:${ctx.match[1]}`,
           },
         ],
       ],
