@@ -1,4 +1,5 @@
-import { prop, getModelForClass } from "@typegoose/typegoose";
+import { prop, getModelForClass, Ref } from "@typegoose/typegoose";
+import { User } from "./users";
 
 export class Bot {
   @prop({ required: true, unique: true, index: true })
@@ -12,6 +13,9 @@ export class Bot {
 
   @prop()
   public token?: string;
+
+  @prop({ ref: () => User, required: true, index: true })
+  public owner: Ref<User>;
 
   @prop()
   public chat_id?: number;
