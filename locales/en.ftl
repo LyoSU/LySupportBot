@@ -19,6 +19,11 @@ setup_success =
 not_allowed = 
     You are not allowed to use this сommand.
 
+not_configured =
+    <b>😓 Bot not configured</b>
+
+    If you are the owner of the bot, write <b>/setup<b> in the group with the bot.
+
 error = 
     <b>An unknown error has occurred, please try again.</b>
 

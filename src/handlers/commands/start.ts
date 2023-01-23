@@ -4,8 +4,14 @@ import { MyContext } from "../../types";
 import { isGroup, isPrivate } from "../../filters/";
 
 async function startPrivate(ctx: MyContext & { chat: Chat.PrivateChat }) {
+  if (!ctx.session.bot.chat_id) {
+    return ctx.reply(ctx.t("not_configured"));
+  }
+
   await ctx.reply(
-    ctx.session.bot.settings.welcome_message.default + "\n\n" + ctx.t("welcome_end"),
+    ctx.session.bot.settings.welcome_message.default +
+      "\n\n" +
+      ctx.t("welcome_end"),
     {
       reply_markup: {
         remove_keyboard: true,

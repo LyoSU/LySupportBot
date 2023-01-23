@@ -84,7 +84,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
   const chatId = ctx.session.bot?.chat_id;
 
   if (!chatId) {
-    return ctx.reply("Chat not configured");
+    return ctx.reply(ctx.t("not_configured"));
   }
 
   let topic = await ctx.database.Topics.findOne({
