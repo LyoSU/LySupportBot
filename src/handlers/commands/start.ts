@@ -21,15 +21,6 @@ async function startGroup(
   await ctx.reply(`Cool chat title: <b>${ctx.chat.title}</>`);
 }
 
-function escapeHtml(s: string) {
-  s = s.replace(/&/g, "&amp;");
-  s = s.replace(/</g, "&lt;");
-  s = s.replace(/>/g, "&gt;");
-  s = s.replace(/"/g, "&quot;");
-  s = s.replace(/\'/g, "&#x27;");
-  return s;
-}
-
 async function setup(bot: Bot<MyContext>) {
   bot.filter(isPrivate).command("start", startPrivate);
   bot.filter(isGroup).command("start", startGroup);

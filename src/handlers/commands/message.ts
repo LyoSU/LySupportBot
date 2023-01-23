@@ -3,12 +3,23 @@ import { Chat } from "@grammyjs/types";
 import { MyContext } from "../../types";
 import { isGroup, isPrivate } from "../../filters/";
 
+function escapeHtml(s: string) {
+  s = s.replace(/&/g, "&amp;");
+  s = s.replace(/</g, "&lt;");
+  s = s.replace(/>/g, "&gt;");
+  s = s.replace(/"/g, "&quot;");
+  s = s.replace(/\'/g, "&#x27;");
+  return s;
+}
+
 async function createTopic(ctx: MyContext) {
   const chatId = ctx.session.bot?.chat_id;
 
-  const name = ctx.from.last_name
+  let name = ctx.from.last_name
     ? ctx.from.first_name + " " + ctx.from.last_name
     : ctx.from.first_name;
+
+  name = escapeHtml(name);
 
   const telegramTopic = await ctx.api
     .createForumTopic(chatId, name)

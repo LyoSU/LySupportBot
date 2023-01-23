@@ -1,6 +1,15 @@
 import { Bot } from "grammy";
 import { MyContext } from "../../types";
 
+function escapeHtml(s: string) {
+  s = s.replace(/&/g, "&amp;");
+  s = s.replace(/</g, "&lt;");
+  s = s.replace(/>/g, "&gt;");
+  s = s.replace(/"/g, "&quot;");
+  s = s.replace(/\'/g, "&#x27;");
+  return s;
+}
+
 async function banUser(ctx: MyContext) {
   const user = await ctx.database.Users.findOne({ telegram_id: ctx.match[1] });
 
@@ -37,7 +46,9 @@ async function banUser(ctx: MyContext) {
   });
 
   return ctx.reply(
-    `User banned by <a href="tg://user?id=${ctx.from.id}">${ctx.from.first_name}</a>`,
+    `User banned by <a href="tg://user?id=${ctx.from.id}">${escapeHtml(
+      ctx.from.first_name
+    )}</a>`,
     {
       message_thread_id: topic.thread_id,
     }
@@ -80,7 +91,9 @@ async function unbanUser(ctx: MyContext) {
   });
 
   return ctx.reply(
-    `User unbanned by <a href="tg://user?id=${ctx.from.id}">${ctx.from.first_name}</a>`,
+    `User unbanned by <a href="tg://user?id=${ctx.from.id}">${escapeHtml(
+      ctx.from.first_name
+    )}</a>`,
     {
       message_thread_id: topic.thread_id,
     }
