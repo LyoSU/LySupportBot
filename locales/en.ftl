@@ -6,7 +6,7 @@ welcome_message =
 
 not_enough_rights =
     The bot does not have enough rights to work.
-    Please give it the ability to manage branches.
+    Please give him administrator rights with the ability to manage topics.
 
 chat_not_forum =
     This chat is not a forum. Please enable topics in the chat settings.

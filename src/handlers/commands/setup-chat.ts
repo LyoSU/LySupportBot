@@ -14,10 +14,7 @@ async function setupChat(
 
   const chatMember = await ctx.getChatMember(ctx.me.id);
 
-  if (
-    chatMember["can_manage_topics"] !== true &&
-    chat["permissions"]["can_manage_topics"] !== true
-  ) {
+  if (chatMember["can_manage_topics"] !== true) {
     return ctx.reply(ctx.t("not_enough_rights"));
   }
 
