@@ -16,6 +16,9 @@ setup_success =
 
     Users can now write messages to the bot.
 
+not_allowed = 
+    You are not allowed to use this сommand.
+
 error = 
     <b>An unknown error has occurred, please try again.</b>
 

@@ -6,6 +6,10 @@ import { isGroup } from "../../filters";
 async function setupChat(
   ctx: MyContext & { chat: Chat.SupergroupChat | Chat.GroupChat }
 ) {
+  if (ctx.session.bot.owner.toString() !== ctx.session.user.id.toString()) {
+    return ctx.reply(ctx.t("not_allowed"));
+  }
+
   const chat = await ctx.getChat();
 
   if (chat["is_forum"] !== true) {
