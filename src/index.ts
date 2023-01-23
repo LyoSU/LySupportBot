@@ -29,10 +29,12 @@ async function start() {
 
     await setup(bot);
 
-    return webhookCallback(bot, "express")(req, res).catch((error: BotError<MyContext>) => {
-      errorHandler(error);
-      res.status(200).send("error handled");
-    });
+    return webhookCallback(bot, "express")(req, res).catch(
+      (error: BotError<MyContext>) => {
+        errorHandler(error);
+        res.status(200).send("error handled");
+      }
+    );
   });
 
   app.listen(Number(process.env.PORT), async () => {
