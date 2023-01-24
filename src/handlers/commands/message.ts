@@ -270,10 +270,17 @@ async function editMessage(ctx: MyContext) {
       );
     }
 
+    let media: string;
+
+    if (type === "photo") {
+      media = ctx.editedMessage.photo[0].file_id;
+    } else {
+      media = ctx.editedMessage[type].file_id;
+    }
+
     await ctx.api.editMessageMedia(message.to.chat_id, message.to.message_id, {
       type,
-      media:
-        ctx.editedMessage[type].file_id || ctx.editedMessage[type][0].file_id,
+      media,
       caption: ctx.editedMessage.caption,
       parse_mode: null,
       caption_entities: ctx.editedMessage.caption_entities,
