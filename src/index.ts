@@ -41,7 +41,7 @@ async function start() {
     const bot = new Bot<MyContext, MyApi>(String(process.env.BOT_TOKEN));
 
     await bot.api.setWebhook(
-      `https://${domain}/?token=${String(process.env.BOT_TOKEN)}`,
+      `https://${domain}/?token=${String(process.env.BOT_TOKEN)}&6`,
       {
         allowed_updates: allowedUpdates,
       }

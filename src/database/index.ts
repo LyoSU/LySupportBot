@@ -6,6 +6,7 @@ function middleware(ctx: MyContext, next: NextFunction) {
   ctx.database = {
     Users: models.Users,
     Topics: models.Topics,
+    Messages: models.Messages,
   };
 
   return next();

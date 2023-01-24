@@ -61,12 +61,6 @@ async function createTopic(ctx: MyContext) {
     }
   );
 
-  // await ctx.api.unpinChatMessage(chatId, mainMessage.message_id).then(() => {
-  //   ctx.api.pinChatMessage(chatId, mainMessage.message_id, {
-  //     disable_notification: true,
-  //   });
-  // });
-
   await ctx.database.Topics.deleteMany({
     bot: ctx.session.bot,
     user: ctx.session.user,
@@ -106,18 +100,55 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     sendMethod = "forwardMessage";
   }
 
-  await ctx.api[sendMethod](chatId, ctx.chat.id, ctx.message.message_id, {
-    message_thread_id: topic.thread_id,
-  }).catch(async (error) => {
+  let replyTo = null;
+
+  if (ctx.message.reply_to_message) {
+    const type = ctx.message.reply_to_message.from.is_bot ? "to" : "from";
+
+    const find = {
+      [type]: {
+        chat_id: ctx.chat.id,
+        message_id: ctx.message.reply_to_message.message_id,
+      },
+    };
+
+    const message = await ctx.database.Messages.findOne(find);
+
+    if (message) {
+      replyTo = message[type === "to" ? "from" : "to"].message_id;
+    }
+  }
+
+  const result = await ctx.api[sendMethod](
+    chatId,
+    ctx.chat.id,
+    ctx.message.message_id,
+    {
+      message_thread_id: topic.thread_id,
+      reply_to_message_id: replyTo,
+      allow_sending_without_reply: true,
+    }
+  ).catch(async (error) => {
     if (error.description.includes("thread not found")) {
       topic = await createTopic(ctx);
 
-      return ctx.api.copyMessage(chatId, ctx.chat.id, ctx.message.message_id, {
+      return ctx.api[sendMethod](chatId, ctx.chat.id, ctx.message.message_id, {
         message_thread_id: topic.thread_id,
       });
     }
 
     throw new Error(error);
+  });
+
+  ctx.database.Messages.create({
+    from: {
+      chat_id: ctx.chat.id,
+      message_id: ctx.message.message_id,
+    },
+    to: {
+      chat_id: chatId,
+      message_id: result.message_id,
+    },
   });
 }
 
@@ -139,8 +170,42 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
     return;
   }
 
+  let replyTo = null;
+
+  if (ctx.message.reply_to_message) {
+    const type = ctx.message.reply_to_message.from.is_bot ? "to" : "from";
+
+    const find = {
+      [type]: {
+        chat_id: ctx.chat.id,
+        message_id: ctx.message.reply_to_message.message_id,
+      },
+    };
+
+    const message = await ctx.database.Messages.findOne(find);
+
+    if (message) {
+      replyTo = message[type === "to" ? "from" : "to"].message_id;
+    }
+  }
+
   await ctx.api
-    .copyMessage(topic.user.telegram_id, ctx.chat.id, ctx.message.message_id)
+    .copyMessage(topic.user.telegram_id, ctx.chat.id, ctx.message.message_id, {
+      reply_to_message_id: replyTo,
+      allow_sending_without_reply: true,
+    })
+    .then((result) => {
+      ctx.database.Messages.create({
+        from: {
+          chat_id: ctx.chat.id,
+          message_id: ctx.message.message_id,
+        },
+        to: {
+          chat_id: topic.user.telegram_id,
+          message_id: result.message_id,
+        },
+      });
+    })
     .catch(async (error) => {
       if (error.description.includes("blocked")) {
         return ctx.reply("User blocked the bot", {
@@ -155,12 +220,65 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
 }
 
 async function editMessage(ctx: MyContext) {
-  await ctx.reply(
-    "🚫 Edit message not supported yet, send a new message instead",
-    {
-      reply_to_message_id: ctx.editedMessage.message_id,
+  const find = {
+    from: {
+      chat_id: ctx.editedMessage.chat.id,
+      message_id: ctx.editedMessage.message_id,
+    },
+  };
+
+  const message = await ctx.database.Messages.findOne(find);
+
+  if (!message) {
+    return ctx.reply(
+      "🚫 Edit message not supported yet, send a new message instead",
+      {
+        reply_to_message_id: ctx.editedMessage.message_id,
+      }
+    );
+  }
+
+  if (ctx.editedMessage.text) {
+    await ctx.api.editMessageText(
+      message.to.chat_id,
+      message.to.message_id,
+      ctx.editedMessage.text,
+      {
+        entities: ctx.editedMessage.entities,
+        parse_mode: null,
+      }
+    );
+  } else {
+    let type: "animation" | "document" | "audio" | "photo" | "video";
+
+    if (ctx.editedMessage.animation) {
+      type = "animation";
+    } else if (ctx.editedMessage.document) {
+      type = "document";
+    } else if (ctx.editedMessage.audio) {
+      type = "audio";
+    } else if (ctx.editedMessage.photo) {
+      type = "photo";
+    } else if (ctx.editedMessage.video) {
+      type = "video";
+    } else {
+      return ctx.reply(
+        "🚫 Edit message not supported yet, send a new message instead",
+        {
+          reply_to_message_id: ctx.editedMessage.message_id,
+        }
+      );
     }
-  );
+
+    await ctx.api.editMessageMedia(message.to.chat_id, message.to.message_id, {
+      type,
+      media:
+        ctx.editedMessage[type].file_id || ctx.editedMessage[type][0].file_id,
+      caption: ctx.editedMessage.caption,
+      parse_mode: null,
+      caption_entities: ctx.editedMessage.caption_entities,
+    });
+  }
 }
 
 async function setup(bot: Bot<MyContext>) {
