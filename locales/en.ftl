@@ -1,5 +1,5 @@
 welcome_end =
-    Bot created by @LySupportBot
+    <i>Support bot created by @LySupportBot</i>
 
 welcome_message =
     Hey! Write your message and we will try to answer as soon as possible
