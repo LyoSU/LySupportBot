@@ -36,6 +36,7 @@ async function setupChat(
 }
 
 async function setup(bot: Bot<MyContext>) {
+  bot.filter(isGroup).command("start", setupChat);
   bot.filter(isGroup).command("setup", setupChat);
 }
 
