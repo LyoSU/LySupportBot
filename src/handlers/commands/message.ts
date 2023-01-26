@@ -35,12 +35,19 @@ async function createTopic(ctx: MyContext) {
     return;
   }
 
+  const chat = await ctx.api.getChat(chatId);
+
+  const openChatText =
+    chat.type === "private" && chat.has_private_forwards
+      ? ""
+      : `\n\n[<a href="tg://user?id=${ctx.from.id}">open chat</a>]`;
+
   const usernameText = ctx.from.username ? ` (@${ctx.from?.username})` : "";
 
   const mainMessage = await ctx.api.sendMessage(
     chatId,
     `
-🧑 <code>${name}</code>${usernameText} - <i><a href="tg://user?id=${ctx.from.id}">mention</a></i>
+🧑 <code>${name}</code>${usernameText}<i></i>${openChatText}
 
 <b>id:</b> <code>${ctx.from.id}</code>
 
