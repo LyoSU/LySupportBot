@@ -35,26 +35,32 @@ async function createTopic(ctx: MyContext) {
     return;
   }
 
-  const chat = await ctx.api.getChat(chatId);
+  const chat = await ctx.api.getChat(ctx.from.id);
 
   const openChatText =
     chat.type === "private" && chat.has_private_forwards
       ? ""
-      : `\n\n[<a href="tg://user?id=${ctx.from.id}">open chat</a>]`;
+      : ` [<a href="tg://user?id=${ctx.from.id}">open chat</a>]`;
 
   const usernameText = ctx.from.username ? ` (@${ctx.from?.username})` : "";
+
+  const bio =
+    chat.type === "private" && chat.bio
+      ? `\n\n<b>📝 bio:</b>\n${escapeHtml(chat.bio)}`
+      : "";
 
   const mainMessage = await ctx.api.sendMessage(
     chatId,
     `
-🧑 <code>${name}</code>${usernameText}<i></i>${openChatText}
+🧑 <code>${name}</code>${usernameText}<i></i>
 
-<b>id:</b> <code>${ctx.from.id}</code>
+🆔 <code>${ctx.from.id}</code>${openChatText}${bio}
 
-<b>🌎 language:</b> ${ctx.from.language_code}
+<b>🌐 language_code:</b> ${ctx.from.language_code}
     `,
     {
       message_thread_id: telegramTopic.message_thread_id,
+      disable_web_page_preview: true,
       reply_markup: {
         inline_keyboard: [
           [
