@@ -12,6 +12,10 @@ function escapeHtml(s: string) {
   return s;
 }
 
+const topicIconColors = [
+  7322096, 16766590, 13338331, 9367192, 16749490, 16478047,
+] as const;
+
 async function createTopic(ctx: MyContext) {
   const chatId = ctx.session.bot?.chat_id;
 
@@ -21,8 +25,12 @@ async function createTopic(ctx: MyContext) {
 
   name = escapeHtml(name);
 
+  const iconColor = topicIconColors[ctx.from.id % topicIconColors.length];
+
   const telegramTopic = await ctx.api
-    .createForumTopic(chatId, name)
+    .createForumTopic(chatId, name, {
+      icon_color: iconColor,
+    })
     .catch((error) => {
       if (error.description.includes("not enough rights")) {
         ctx.api.sendMessage(chatId, ctx.t("not_enough_rights"));

@@ -30,7 +30,7 @@ async function setup(bot: Bot<MyContext>) {
 
   bot.use(database.middleware);
   bot.use(botUpdateMiddleware);
-  bot.on("message", userUpdateMiddleware);
+  bot.use(userUpdateMiddleware);
 }
 
 export default { setup };
