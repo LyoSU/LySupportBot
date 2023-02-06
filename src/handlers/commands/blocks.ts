@@ -22,7 +22,7 @@ async function sendBlock(ctx: MyContext, block) {
       }
     }
 
-    replyMarkup = keyboard;
+    replyMarkup = keyboard.oneTime().resized();
   } else {
     ctx.session.state.contactData = new Date();
 
@@ -31,7 +31,7 @@ async function sendBlock(ctx: MyContext, block) {
       .row()
       .add(ctx.t("block_back_button"));
 
-    replyMarkup = keyboard;
+    replyMarkup = keyboard.oneTime().resized();
   }
 
   if (block.message.type === "text") {
