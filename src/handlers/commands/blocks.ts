@@ -124,12 +124,12 @@ async function backBlock(ctx: MyContext) {
 async function setup(bot: Bot<MyContext>) {
   bot
     .filter(isPrivate)
-    .filter((ctx) => ctx.message.text === ctx.t("contact_button"))
+    .filter((ctx) => ctx.message?.text === ctx.t("contact_button"))
     .use(contactButton);
 
   bot
     .filter(isPrivate)
-    .filter((ctx) => ctx.message.text === ctx.t("block_back_button"))
+    .filter((ctx) => ctx.message?.text === ctx.t("block_back_button"))
     .use(backBlock);
 
   bot.filter(isPrivate).use(conversationBlock);
