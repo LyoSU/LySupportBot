@@ -220,7 +220,9 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
   }
 
   if (ctx.message?.text?.startsWith("/")) {
-    return ctx.reply(ctx.t("unknown_command"));
+    return ctx.reply(ctx.t("unknown_command"), {
+      reply_to_message_id: ctx.message.message_id,
+    });
   }
 
   let replyTo = null;
