@@ -2,12 +2,13 @@ import { Bot, NextFunction } from "grammy";
 import { Chat } from "@grammyjs/types";
 import { MyContext } from "../types";
 import { isPrivate } from "../filters/";
+import db from "../database/models";
 
 async function userChat(ctx: MyContext & { chat: Chat.PrivateChat }) {
-  const topic = await ctx.database.Topics.findOne({
+  const topic = (await db.Topics.findOne({
     bot: ctx.session.bot,
     user: ctx.session.user,
-  }).populate("bot");
+  }).populate("bot")) as any;
 
   if (!topic) {
     return;
