@@ -2,6 +2,8 @@ import { Bot } from "grammy";
 import { Chat } from "@grammyjs/types";
 import { MyContext } from "../../types";
 import { isGroup, isPrivate } from "../../filters/";
+import db from "../../database/models";
+import { isDocument } from "@typegoose/typegoose";
 
 function escapeHtml(s: string) {
   s = s.replace(/&/g, "&amp;");
@@ -82,12 +84,12 @@ async function createTopic(ctx: MyContext) {
     }
   );
 
-  await ctx.database.Topics.deleteMany({
+  await db.Topics.deleteMany({
     bot: ctx.session.bot,
     user: ctx.session.user,
   });
 
-  return ctx.database.Topics.create({
+  return db.Topics.create({
     bot: ctx.session.bot,
     thread_id: telegramTopic.message_thread_id,
     user: ctx.session.user,
@@ -102,7 +104,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     return ctx.reply(ctx.t("not_configured"));
   }
 
-  let topic = await ctx.database.Topics.findOne({
+  let topic = await db.Topics.findOne({
     bot: ctx.session.bot,
     user: ctx.session.user,
   });
@@ -113,6 +115,33 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
 
   if (topic.is_blocked) {
     return ctx.reply("You are banned");
+  }
+
+  if (ctx.session.state.blocksChain && ctx.session.state.blocksChain.length) {
+    const blocks = ctx.session.state.blocksChain;
+
+    let blockChain = [];
+
+    for (const id of blocks) {
+      const block = await db.Blocks.findById(id);
+
+      if (block) {
+        blockChain.push(block.name);
+      }
+    }
+
+    await ctx.api
+      .sendMessage(
+        chatId,
+        ctx.t("blocked_chain", { chain: blockChain.join(" -> ") }),
+        {
+          message_thread_id: topic.thread_id,
+        }
+      )
+      .catch(() => {})
+      .finally(() => {
+        ctx.session.state.blocksChain = [];
+      });
   }
 
   let sendMethod = "copyMessage";
@@ -133,7 +162,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
       },
     };
 
-    const message = await ctx.database.Messages.findOne(find);
+    const message = await db.Messages.findOne(find);
 
     if (message) {
       replyTo = message[type === "to" ? "from" : "to"].message_id;
@@ -161,7 +190,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     throw new Error(error);
   });
 
-  ctx.database.Messages.create({
+  db.Messages.create({
     from: {
       chat_id: ctx.chat.id,
       message_id: ctx.message.message_id,
@@ -181,14 +210,17 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
   ) {
     return;
   }
-
-  const topic = await ctx.database.Topics.findOne({
+  const topic = await db.Topics.findOne({
     bot: ctx.session.bot,
     thread_id: ctx.message.message_thread_id,
   }).populate("user");
 
-  if (!topic) {
+  if (!isDocument(topic) || !isDocument(topic.user)) {
     return;
+  }
+
+  if (ctx.message?.text?.startsWith("/")) {
+    return ctx.reply(ctx.t("unknown_command"));
   }
 
   let replyTo = null;
@@ -203,29 +235,17 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
       },
     };
 
-    const message = await ctx.database.Messages.findOne(find);
+    const message = await db.Messages.findOne(find);
 
     if (message) {
       replyTo = message[type === "to" ? "from" : "to"].message_id;
     }
   }
 
-  await ctx.api
+  const resultCopy = await ctx.api
     .copyMessage(topic.user.telegram_id, ctx.chat.id, ctx.message.message_id, {
       reply_to_message_id: replyTo,
       allow_sending_without_reply: true,
-    })
-    .then((result) => {
-      ctx.database.Messages.create({
-        from: {
-          chat_id: ctx.chat.id,
-          message_id: ctx.message.message_id,
-        },
-        to: {
-          chat_id: topic.user.telegram_id,
-          message_id: result.message_id,
-        },
-      });
     })
     .catch(async (error) => {
       if (error.description.includes("blocked")) {
@@ -238,6 +258,19 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
 
       throw new Error(error);
     });
+
+  await db.Messages.create({
+    from: {
+      chat_id: ctx.chat.id,
+      message_id: ctx.message.message_id,
+    },
+    to: {
+      chat_id: topic.user.telegram_id,
+      message_id: resultCopy.message_id,
+    },
+  });
+
+  return;
 }
 
 async function editMessage(ctx: MyContext) {
@@ -248,7 +281,7 @@ async function editMessage(ctx: MyContext) {
     },
   };
 
-  const message = await ctx.database.Messages.findOne(find);
+  const message = await db.Messages.findOne(find);
 
   if (!message) {
     return ctx.reply(

@@ -1,9 +1,14 @@
-import { Bot } from "grammy";
+import { Bot, NextFunction } from "grammy";
 import { Chat } from "@grammyjs/types";
 import { MyContext } from "../../types";
 import { isPrivate } from "../../filters/";
 
-async function startPrivate(ctx: MyContext & { chat: Chat.PrivateChat }) {
+async function startPrivate(
+  ctx: MyContext & { chat: Chat.PrivateChat },
+  next: NextFunction
+) {
+  ctx.session.state.contactData = null;
+
   if (!ctx.session.bot.chat_id) {
     return ctx.reply(ctx.t("not_configured"));
   }
@@ -19,6 +24,8 @@ async function startPrivate(ctx: MyContext & { chat: Chat.PrivateChat }) {
       disable_web_page_preview: true,
     }
   );
+
+  return next();
 }
 
 async function setup(bot: Bot<MyContext>) {

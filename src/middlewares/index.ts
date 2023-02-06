@@ -2,8 +2,9 @@ import { Bot, session } from "grammy";
 import { logger } from "../utils";
 import { MyContext, SessionData } from "../types";
 import { hydrateContext } from "@grammyjs/hydrate";
-
-import database from "../database";
+import { MongoDBAdapter, ISession } from "@grammyjs/storage-mongodb";
+import { MongoClient } from "mongodb";
+import { conversations } from "@grammyjs/conversations";
 
 import loggingUpdates from "./logging";
 import { i18n } from "./i18n";
@@ -22,15 +23,34 @@ async function setup(bot: Bot<MyContext>) {
       bot: undefined,
       state: {},
       data: {},
+      conversation: {},
     };
   }
-  bot.use(session({ initial }));
 
-  bot.use(i18n());
+  const client = new MongoClient(process.env.MONGO_URI);
+  const db = client.db();
+  const sessions = db.collection<ISession>("sessions");
 
-  bot.use(database.middleware);
+  bot.use(
+    session({
+      initial,
+      storage: new MongoDBAdapter({ collection: sessions }) as any,
+      getSessionKey(ctx: MyContext): string | undefined {
+        return `${ctx.me.id}:${ctx.from?.id}`;
+      },
+    })
+  );
+
   bot.use(botUpdateMiddleware);
   bot.use(userUpdateMiddleware);
+  bot.use((ctx, next) => {
+    ctx.session.conversation = ctx.session.conversation || {};
+    return next();
+  });
+
+  bot.use(conversations());
+
+  bot.use(i18n());
 }
 
 export default { setup };

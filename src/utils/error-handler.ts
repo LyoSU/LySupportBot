@@ -16,6 +16,8 @@ async function errorHandler(err: BotError<MyContext>) {
   } else if (e instanceof HttpError) {
     logger.error(`Could not contact Telegram: ${e}`);
   } else {
+    console.error(e);
+
     logger.error(`Unknown error: ${e}`);
   }
 

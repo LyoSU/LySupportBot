@@ -24,6 +24,42 @@ not_configured =
 
     If you are the owner of the bot, send <code>/start</code>> in the group with the bot.
 
+no_blocks = 
+    <b>There are no blocks</b>
+
+    The bot does not have any blocks.
+    You can create blocks using the button below.
+
+block_add_button = ➕ Add block
+block_edit_data_button = 📝 Edit content
+block_edit_name_button = ✏️ Edit name
+block_delete_button = ❌ Delete
+
+send_block_name = 
+    Send the name of the button:
+send_block_message =
+    Send the content of the block:
+
+block_created =
+    <b>Block created!</b>
+
+    Below you can view and edit its content
+
+block_back_button = Back to start
+contact_button = ✍️ Write a message
+
+send_message =
+    Send your message:
+
+blocked_chain =
+    <b>🔗 User path:</b>
+    { $chain }
+
+unknown_command = 
+    <b>Unknown command</b>
+
+    The message was not sent.
+
 error = 
     <b>An unknown error has occurred, please try again.</b>
 
