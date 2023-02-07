@@ -3,8 +3,6 @@ import { MyContext } from "../../types";
 import { isGroup } from "../../filters/";
 import {
   type Conversation,
-  type ConversationFlavor,
-  conversations,
   createConversation,
 } from "@grammyjs/conversations";
 import db from "../../database/models";
@@ -266,6 +264,17 @@ async function deleteBlock(ctx: MyContext) {
   }
 
   await block.remove();
+
+  if (block.name === "main") {
+    await db.Bots.updateOne(
+      { telegram_id: ctx.me.id },
+      {
+        $unset: {
+          "settings.mainBlock": "",
+        },
+      }
+    );
+  }
 
   await ctx.answerCallbackQuery(ctx.t("block_deleted"));
 
