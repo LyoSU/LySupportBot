@@ -8,8 +8,6 @@ import { Bot } from "grammy";
 import { MyApi, MyContext } from "../types";
 
 async function setupBot(bot: Bot<MyContext, MyApi>) {
-  logger.info("Setting up the bot...");
-
   // await botCommands.setup(bot);
 
   await transformers.setup(bot);

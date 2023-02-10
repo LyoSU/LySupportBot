@@ -8,7 +8,6 @@ import blocks from "./blocks";
 import adminBlocks from "./admin-blocks";
 
 async function setup(bot: Bot<MyContext>) {
-  logger.info("Setting up command handlers...");
   await start.setup(bot);
   await blocks.setup(bot);
   await adminBlocks.setup(bot);

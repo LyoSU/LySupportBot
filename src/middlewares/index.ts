@@ -12,8 +12,6 @@ import { userUpdateMiddleware } from "./user-update";
 import { botUpdateMiddleware } from "./bot-update";
 
 async function setup(bot: Bot<MyContext>) {
-  logger.info("Setting up middlewares...");
-
   bot.use(loggingUpdates);
   bot.use(hydrateContext());
 

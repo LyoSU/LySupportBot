@@ -9,8 +9,6 @@ import throttler from "./throttler";
 import loggingApiCalls from "./logging-api-calls";
 
 async function setup(bot: Bot<MyContext, MyApi>) {
-  logger.info("Setting up API transformers...");
-
   bot.api.config.use(loggingApiCalls);
   bot.api.config.use(throttler);
   bot.api.config.use(hydrateApi());

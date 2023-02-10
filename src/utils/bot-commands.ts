@@ -33,8 +33,6 @@ const DEFAULT_COMMANDS_GROUP: MyBotCommands = {
 };
 
 async function setup(bot: Bot<MyContext>) {
-  logger.info("Setting up bot commands...");
-
   const allCommands: MyBotCommands[] = [
     DEFAULT_COMMANDS_PRIVATE,
     DEFAULT_COMMANDS_GROUP,
