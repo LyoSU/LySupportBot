@@ -1,10 +1,7 @@
 import { Bot, InlineKeyboard, Keyboard } from "grammy";
 import { MyContext } from "../../types";
 import { isGroup } from "../../filters/";
-import {
-  type Conversation,
-  createConversation,
-} from "@grammyjs/conversations";
+import { type Conversation, createConversation } from "@grammyjs/conversations";
 import db from "../../database/models";
 
 async function sendBlock(ctx: MyContext, block) {
@@ -322,6 +319,67 @@ async function editBlockName(conversation: MyConversation, ctx: MyContext) {
   return sendBlock(ctx, block);
 }
 
+async function editBlockData(conversation: MyConversation, ctx: MyContext) {
+  await ctx.reply(ctx.t("send_block_message"));
+
+  let messageCtx = null as any;
+
+  let type: "text" | "animation" | "document" | "audio" | "photo" | "video";
+
+  do {
+    messageCtx = await conversation.waitFor("message");
+
+    if (messageCtx.message.text) {
+      type = "text";
+    } else if (messageCtx.message.animation) {
+      type = "animation";
+    } else if (messageCtx.message.document) {
+      type = "document";
+    } else if (messageCtx.message.audio) {
+      type = "audio";
+    } else if (messageCtx.message.photo) {
+      type = "photo";
+    } else if (messageCtx.message.video) {
+      type = "video";
+    } else {
+      await ctx.reply(ctx.t("unsupported_media_type"));
+    }
+  } while (!type);
+
+  const { message } = messageCtx;
+
+  let media = null as string | null;
+
+  if (type === "text") {
+    media = null;
+  } else if (type === "photo") {
+    media = message.photo[0].file_id;
+  } else {
+    media = message[type].file_id;
+  }
+
+  const block = await db.Blocks.findById(ctx.match[1]);
+
+  if (!block) {
+    return ctx.reply(ctx.t("no_block"));
+  }
+
+  block.message.type = type;
+  block.message.data = {
+    text: message?.text,
+    media,
+    entities: message?.entities,
+    caption: message?.caption,
+    caption_entities: message?.caption_entities,
+  };
+
+  await block.save();
+
+  await ctx.reply(ctx.t("block_data_edited"));
+
+  return sendBlock(ctx, block);
+}
+
 async function setup(bot: Bot<MyContext>) {
   const groupAdmin = bot.filter(isGroup).filter(async (ctx) => {
     if (ctx.session.bot.chat_id !== ctx.chat.id) {
@@ -332,6 +390,7 @@ async function setup(bot: Bot<MyContext>) {
   });
 
   groupAdmin.use(createConversation(createBlock));
+  groupAdmin.use(createConversation(editBlockData));
   groupAdmin.use(createConversation(editBlockName));
 
   groupAdmin.command("blocks", mainBlock);
@@ -351,6 +410,10 @@ async function setup(bot: Bot<MyContext>) {
       await ctx.conversation.enter("createBlock");
     }
   );
+
+  groupAdmin.callbackQuery(/^edit_block_data:(.+)$/, async (ctx) => {
+    await ctx.conversation.enter("editBlockData");
+  });
 
   groupAdmin.callbackQuery(/^edit_block_name:(.+)$/, async (ctx) => {
     await ctx.conversation.enter("editBlockName");

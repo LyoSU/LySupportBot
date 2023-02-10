@@ -40,10 +40,21 @@ send_block_name =
 send_block_message =
     Send the content of the block:
 
+unsupported_media_type =
+    <b>Unfortunately, the bot does not support this type of message.</b>
+
+    Please send another message:
+
 block_created =
     <b>Block created!</b>
 
     Below you can view and edit its content
+
+block_name_edited =
+    <b>Block name successfully changed!</b>
+
+block_data_edited =
+    <b>Block content successfully changed!</b>
 
 block_back_button = Back to start
 contact_button = ✍️ Write a message
