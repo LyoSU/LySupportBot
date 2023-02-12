@@ -24,10 +24,12 @@ async function errorHandler(err: BotError<MyContext>, res: any) {
   try {
     await ctx.reply(ctx.t("error"));
 
-    res.status(200).send("error handled");
+    return res.status(200).send("error handled");
   } catch (error) {
     logger.error(`Error in reply: ${error}`);
   }
+
+  return res.status(500).send("internal error, please try again later");
 }
 
 export default errorHandler;
