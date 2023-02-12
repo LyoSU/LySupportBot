@@ -1,5 +1,6 @@
 import { Bot } from "grammy";
 import { MyContext } from "../../types";
+import db from "../../database/models";
 
 function escapeHtml(s: string) {
   s = s.replace(/&/g, "&amp;");
@@ -11,13 +12,13 @@ function escapeHtml(s: string) {
 }
 
 async function banUser(ctx: MyContext) {
-  const user = await ctx.database.Users.findOne({ telegram_id: ctx.match[1] });
+  const user = await db.Users.findOne({ telegram_id: ctx.match[1] });
 
   if (!user) {
     return ctx.reply("User not found");
   }
 
-  const topic = await ctx.database.Topics.findOne({
+  const topic = await db.Topics.findOne({
     bot: ctx.session.bot,
     user: user,
   });
@@ -56,13 +57,13 @@ async function banUser(ctx: MyContext) {
 }
 
 async function unbanUser(ctx: MyContext) {
-  const user = await ctx.database.Users.findOne({ telegram_id: ctx.match[1] });
+  const user = await db.Users.findOne({ telegram_id: ctx.match[1] });
 
   if (!user) {
     return ctx.reply("User not found");
   }
 
-  const topic = await ctx.database.Topics.findOne({
+  const topic = await db.Topics.findOne({
     bot: ctx.session.bot,
     user: user,
   });
