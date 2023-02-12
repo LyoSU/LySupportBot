@@ -31,8 +31,7 @@ async function start() {
 
     return webhookCallback(bot, "express")(req, res).catch(
       (error: BotError<MyContext>) => {
-        errorHandler(error);
-        res.status(200).send("error handled");
+        return errorHandler(error, res);
       }
     );
   });

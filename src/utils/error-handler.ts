@@ -2,7 +2,7 @@ import { BotError, GrammyError, HttpError, Bot, Composer } from "grammy";
 import { MyContext } from "../types";
 import { logger } from ".";
 
-async function errorHandler(err: BotError<MyContext>) {
+async function errorHandler(err: BotError<MyContext>, res: any) {
   const ctx: MyContext = err.ctx;
   // const timeout: number = Date.now() - ctx["_start"];
   // logger.error(
@@ -22,7 +22,9 @@ async function errorHandler(err: BotError<MyContext>) {
   }
 
   try {
-    await ctx.reply(ctx.t("error")).catch(() => {});
+    await ctx.reply(ctx.t("error"));
+
+    res.status(200).send("error handled");
   } catch (error) {
     logger.error(`Error in reply: ${error}`);
   }
