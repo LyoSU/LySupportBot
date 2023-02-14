@@ -27,6 +27,13 @@ async function setup(bot: Bot<MyContext>) {
 
   const client = new MongoClient(process.env.MONGO_URI);
   const db = client.db();
+
+  client.on("error", (err) => {
+    logger.error("MongoDB connection error: ", err);
+
+    setTimeout(() => process.exit(1), 2000);
+  });
+
   const sessions = db.collection<ISession>("sessions");
 
   bot.use(
