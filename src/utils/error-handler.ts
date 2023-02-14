@@ -22,7 +22,23 @@ async function errorHandler(err: BotError<MyContext>, res: any) {
   }
 
   try {
-    await ctx.reply(ctx.t("error"));
+    await ctx.reply(ctx.t("error")).catch(error => {
+      if (error instanceof HttpError) {
+        logger.error(`Could not contact Telegram: ${error}`);
+      }
+
+      if (error instanceof GrammyError) {
+        logger.error(`Error in request: ${error.description}`);
+      }
+
+      if (error instanceof BotError) {
+        logger.error(`Error in bot: ${error.ctx}`);
+      }
+
+      if (error instanceof Error) {
+        logger.error(`Unknown error: ${error}`);
+      }
+    });
 
     return res.status(200).send("error handled");
   } catch (error) {
