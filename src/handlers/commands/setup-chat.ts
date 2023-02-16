@@ -24,7 +24,7 @@ async function setupChat(
 
   ctx.session.bot.chat_id = ctx.chat.id;
 
-  if (!ctx.session.bot.settings.welcome_message) {
+  if (!ctx.session.bot?.settings?.welcome_message) {
     ctx.session.bot.settings = {
       welcome_message: {
         default: ctx.t("welcome_message"),
