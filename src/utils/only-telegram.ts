@@ -24,7 +24,10 @@ function ip4ToNum(ip: string): number {
 
 function onlyAcceptSubnets(req, res, next): void {
   const ipAddress =
-    req.headers["x-real-ip"] || req.ip || req.connection.remoteAddress;
+    req.headers["cf-connecting-ip"] ||
+    req.headers["x-real-ip"] ||
+    req.ip ||
+    req.connection.remoteAddress;
   const isPostRequest = req.method === "POST";
   const isAcceptedSubnet = ACCEPTED_SUBNETS.some((subnet) =>
     isIpInSubnet(ipAddress, subnet)
@@ -32,9 +35,12 @@ function onlyAcceptSubnets(req, res, next): void {
   if (isPostRequest && isAcceptedSubnet) {
     return next();
   }
-  console.error(`Unauthorized request from ${ipAddress}`);
-  console.log(req.headers);
-  // res.status(403).send("Forbidden");
+  console.error(
+    `Unauthorized request from ${ipAddress}, headers: ${JSON.stringify(
+      req.headers
+    )}, body: ${JSON.stringify(req.body)}`
+  );
+  res.status(403).send("Forbidden");
   return next();
 }
 

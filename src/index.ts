@@ -29,7 +29,12 @@ async function start() {
     rateLimit({
       keyGenerator: (req) => {
         const token =
-          req.query.token || req.headers["x-real-ip"] || req.ip || "";
+          req.query.token ||
+          req.headers["cf-connecting-ip"] ||
+          req.headers["x-real-ip"] ||
+          req.ip ||
+          req.connection.remoteAddress ||
+          "unknown";
         return token;
       },
       windowMs: 60 * 1000,
