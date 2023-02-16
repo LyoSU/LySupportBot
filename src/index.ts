@@ -29,7 +29,7 @@ async function start() {
     rateLimit({
       keyGenerator: (req) => {
         const token =
-          req.query.token || req.headers["x-forwarded-for"] || req.ip || "";
+          req.query.token || req.headers["x-real-ip"] || req.ip || "";
         return token;
       },
       windowMs: 60 * 1000,
