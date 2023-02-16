@@ -32,6 +32,7 @@ function onlyAcceptSubnets(req, res, next): void {
   if (isPostRequest && isAcceptedSubnet) {
     return next();
   }
+  console.error(`Unauthorized request from ${ipAddress}`);
   res.status(403).send("Forbidden");
 }
 
