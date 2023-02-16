@@ -8,6 +8,10 @@ export const userUpdateMiddleware = async (
 ) => {
   const { from } = ctx;
 
+  if (!from) {
+    return next();
+  }
+
   let params: Partial<User> = {
     telegram_id: from.id,
     first_name: from.first_name,

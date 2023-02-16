@@ -345,6 +345,10 @@ async function editMessage(ctx: MyContext) {
 }
 
 async function setup(bot: Bot<MyContext>) {
+  bot.on("channel_post", (ctx) => {
+    return ctx.leaveChat();
+  });
+
   bot.filter(isPrivate).on("message", anyPrivateMessage);
   bot.filter(isGroup).on("message", anyGroupMessage);
   bot.on("edited_message", editMessage);
