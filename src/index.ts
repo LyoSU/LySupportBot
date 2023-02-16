@@ -5,18 +5,38 @@ import dotenv from "dotenv";
 dotenv.config({ path: `${__dirname}/../.env` });
 
 import express from "express";
+import rateLimit from "express-rate-limit";
+import { onlyTelegram } from "./utils";
+
 import { webhookCallback } from "grammy";
 
 import { allowedUpdates, logger, setup, errorHandler } from "./utils";
 import { connectMongoose } from "./database/connection";
 
+import db from "./database/models";
+
 const domain = String(process.env.DOMAIN);
 const app = express();
+
+app.use(onlyTelegram);
+
+app.use(express.json());
 
 async function start() {
   await connectMongoose();
 
-  app.use(express.json());
+  app.use(
+    rateLimit({
+      keyGenerator: (req) => {
+        const token =
+          req.query.token || req.headers["x-forwarded-for"] || req.ip || "";
+        return token;
+      },
+      windowMs: 60 * 1000,
+      max: 30,
+    })
+  );
+
   app.use(async (req: express.Request, res: express.Response) => {
     const token = req.query.token;
 
@@ -25,9 +45,21 @@ async function start() {
       return;
     }
 
+    const findBot = db.Bots.findOne({ token });
+
+    if (!findBot) {
+      res.status(401).send("Unauthorized");
+      return;
+    }
+
     const bot = new Bot<MyContext, MyApi>(token);
 
     await setup(bot);
+
+    if (!bot.botInfo) {
+      res.status(401).send("Unauthorized");
+      return;
+    }
 
     return webhookCallback(bot, "express")(req, res).catch(
       (error: BotError<MyContext>) => {

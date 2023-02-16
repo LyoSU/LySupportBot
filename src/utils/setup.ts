@@ -15,6 +15,8 @@ async function setupBot(bot: Bot<MyContext, MyApi>) {
   await middlewares.setup(bot);
 
   await handlers.setup(bot);
+
+  await bot.init();
 }
 
 export default setupBot;
