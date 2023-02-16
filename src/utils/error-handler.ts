@@ -18,31 +18,17 @@ async function errorHandler(err: BotError<MyContext>, res: any) {
   } else {
     console.error(e);
 
-    logger.error(`Unknown error: ${e}`);
+    logger.error(`Unknown error: ${e}, update: ${ctx.update}`);
   }
 
   try {
-    await ctx.reply(ctx.t("error")).catch(error => {
-      if (error instanceof HttpError) {
-        logger.error(`Could not contact Telegram: ${error}`);
-      }
-
-      if (error instanceof GrammyError) {
-        logger.error(`Error in request: ${error.description}`);
-      }
-
-      if (error instanceof BotError) {
-        logger.error(`Error in bot: ${error.ctx}`);
-      }
-
-      if (error instanceof Error) {
-        logger.error(`Unknown error: ${error}`);
-      }
+    await ctx.reply(ctx.t("error")).catch((error) => {
+      logger.error(`Error in error handler: ${error}`);
     });
 
     return res.status(200).send("error handled");
   } catch (error) {
-    logger.error(`Error in reply: ${error}`);
+    logger.error(`Error in error handler: ${error}`);
   }
 
   return res.status(500).send("internal error, please try again later");
