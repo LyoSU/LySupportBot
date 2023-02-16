@@ -17,7 +17,7 @@ async function start() {
   await connectMongoose();
 
   app.use(express.json());
-  app.use(async (req, res) => {
+  app.use(async (req: express.Request, res: express.Response) => {
     const token = req.query.token;
 
     if (!token) {
