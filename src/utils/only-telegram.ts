@@ -41,7 +41,6 @@ function onlyAcceptSubnets(req, res, next): void {
     )}, body: ${JSON.stringify(req.body)}`
   );
   res.status(403).send("Forbidden");
-  return next();
 }
 
 export default onlyAcceptSubnets;
