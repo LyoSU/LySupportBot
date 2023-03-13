@@ -2,7 +2,6 @@ import { Bot, NextFunction } from "grammy";
 import { Chat } from "@grammyjs/types";
 import { MyContext } from "../../types";
 import { isPrivate } from "../../filters/";
-import db from "../../database/models";
 
 async function startPrivate(
   ctx: MyContext & { chat: Chat.PrivateChat },
@@ -26,7 +25,7 @@ async function startPrivate(
     }
   );
 
-  if (ctx.session.bot.settings.mainBlock) {
+  if (ctx.session?.bot?.settings?.mainBlock) {
     return next();
   }
 }

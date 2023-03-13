@@ -68,7 +68,7 @@ async function sendBlock(ctx: MyContext, block) {
 
 async function mainBlock(ctx: MyContext) {
   const mainBlock = await db.Blocks.findById(
-    ctx.session.bot.settings.mainBlock
+    ctx.session.bot?.settings?.mainBlock
   );
 
   if (!mainBlock) {
