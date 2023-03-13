@@ -81,7 +81,7 @@ async function conversationBlock(ctx: MyContext, next: NextFunction) {
   }
 
   if (!block) {
-    if (!bot.settings.mainBlock) {
+    if (!bot?.settings?.mainBlock) {
       return next();
     }
 

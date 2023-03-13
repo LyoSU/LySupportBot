@@ -261,6 +261,12 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
       throw new Error(error);
     });
 
+  if (!resultCopy) {
+    return ctx.reply("🚫 This message cannot be sent", {
+      reply_to_message_id: ctx.message.message_id,
+    });
+  }
+
   await db.Messages.create({
     from: {
       chat_id: ctx.chat.id,
