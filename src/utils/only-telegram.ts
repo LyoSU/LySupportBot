@@ -25,6 +25,7 @@ function ip4ToNum(ip: string): number {
 function onlyAcceptSubnets(req, res, next): void {
   const ipAddress =
     req.headers["cf-connecting-ip"] ||
+    req.headers["x-forwarded-for"] ||
     req.headers["x-real-ip"] ||
     req.ip ||
     req.connection.remoteAddress;

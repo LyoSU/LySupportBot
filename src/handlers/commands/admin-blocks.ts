@@ -170,7 +170,7 @@ async function createBlock(conversation: MyConversation, ctx: MyContext) {
     const parentBlock = await db.Blocks.findById(ctx.match[1]);
 
     if (!parentBlock) {
-      await ctx.reply(ctx.t("no_block"));
+      return ctx.reply(ctx.t("no_block"));
     }
 
     parentBlock.message.keyboard.map((row) =>
