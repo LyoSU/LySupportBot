@@ -33,11 +33,11 @@ async function importanceRatingAI(text: string, retries = 0) {
           content: text,
         },
       ],
-      max_tokens: 64,
-      temperature: 0.0,
-      top_p: 0.0,
-      frequency_penalty: 0.0,
-      presence_penalty: 0.0,
+      max_tokens: 128,
+      presence_penalty: 0,
+      frequency_penalty: 0,
+      temperature: 0,
+      top_p: 0,
     })
     .catch((err) => {
       console.error("OpenAI error:", err?.response?.statusText || err.message);
@@ -234,7 +234,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     });
 
     if (ctx.session.bot.settings.ai) {
-      const aiResponse = await importanceRatingAI(messageText).catch((err) => {
+      const aiResponse = await importanceRatingAI(ctx?.message?.text || ctx?.message?.caption || "[no text]").catch((err) => {
         console.error(
           "OpenAI error:",
           err?.response?.statusText || err.message
