@@ -224,14 +224,27 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
       }
     }
 
+    let messageText = ctx.t("blocked_chain", {
+      chain: blockChain.join(" -> "),
+    });
+
+    if (ctx.session.bot.settings.ai) {
+      const aiResponse = await importanceRatingAI(messageText).catch((err) => {
+        console.error(
+          "OpenAI error:",
+          err?.response?.statusText || err.message
+        );
+      });
+
+      if (aiResponse?.ok) {
+        messageText += `\n\n<b>🤖 AI rating:</b> ${aiResponse.importance} (${aiResponse.category})`;
+      }
+    }
+
     await ctx.api
-      .sendMessage(
-        chatId,
-        ctx.t("blocked_chain", { chain: blockChain.join(" -> ") }),
-        {
-          message_thread_id: topic.thread_id,
-        }
-      )
+      .sendMessage(chatId, messageText, {
+        message_thread_id: topic.thread_id,
+      })
       .catch(() => {})
       .finally(() => {
         ctx.session.state.blocksChain = [];
