@@ -4,6 +4,76 @@ import { MyContext } from "../../types";
 import { isGroup, isPrivate } from "../../filters/";
 import db from "../../database/models";
 import { isDocument } from "@typegoose/typegoose";
+import { OpenAIApi, Configuration } from "openai";
+
+const openaiConfiguration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+const openai = new OpenAIApi(openaiConfiguration);
+
+async function importanceRatingAI(text: string, retries = 0) {
+  if (retries > 3) {
+    return {
+      ok: false,
+      error: "OpenAI error",
+    };
+  }
+
+  const aiResponse = await openai
+    .createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content:
+            'You are a support agent. You need to determine the importance and category for the question the user is asking. Rate the importance as low, medium, high. The category can be one of: question, problem, more_details, other. Your answer should only be in this format: {"ok":true,"importance": "medium", "category": "question" } and nothing else write.',
+        },
+        {
+          role: "user",
+          content: text,
+        },
+      ],
+      max_tokens: 64,
+      temperature: 1,
+      top_p: 1,
+      frequency_penalty: 0.0,
+      presence_penalty: 0.0,
+    })
+    .catch((err) => {
+      console.error("OpenAI error:", err?.response?.statusText || err.message);
+    });
+
+  // retry if failed
+  if (
+    !aiResponse ||
+    !aiResponse.data ||
+    !aiResponse.data.choices ||
+    !aiResponse.data.choices[0]
+  ) {
+    return importanceRatingAI(text, retries + 1);
+  }
+
+  const aiResponseText = aiResponse.data.choices[0].message.content;
+
+  // retry if failed or not valid json
+  if (!aiResponseText) {
+    return importanceRatingAI(text, retries + 1);
+  }
+
+  const aiResponseJson = JSON.parse(aiResponseText);
+
+  // retry if failed or not valid json
+  if (
+    !aiResponseJson ||
+    !aiResponseJson.ok ||
+    !aiResponseJson.importance ||
+    !aiResponseJson.category
+  ) {
+    return importanceRatingAI(text, retries + 1);
+  }
+
+  return aiResponseJson;
+}
 
 function escapeHtml(s: string) {
   s = s.replace(/&/g, "&amp;");
@@ -27,10 +97,33 @@ async function createTopic(ctx: MyContext) {
 
   name = escapeHtml(name);
 
+  let topicTitle = name;
   const iconColor = topicIconColors[ctx.from.id % topicIconColors.length];
 
+  let aiRating = "" as string;
+
+  if (ctx.session.bot.settings.ai) {
+    const aiResponse = await importanceRatingAI(
+      ctx?.message?.text || ctx?.message?.caption || "[no text]"
+    ).catch((err) => {
+      console.error("OpenAI error:", err?.response?.statusText || err.message);
+    });
+
+    if (aiResponse?.ok) {
+      aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.importance} (${aiResponse.category})`;
+
+      if (aiResponse.importance === "medium") {
+        topicTitle = `🔸 ${topicTitle}`;
+      } else if (aiResponse.importance === "high") {
+        topicTitle = `🔺 ${topicTitle}`;
+      }
+    } else {
+      aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.error}`;
+    }
+  }
+
   const telegramTopic = await ctx.api
-    .createForumTopic(chatId, name, {
+    .createForumTopic(chatId, topicTitle, {
       icon_color: iconColor,
     })
     .catch((error) => {
@@ -67,6 +160,7 @@ async function createTopic(ctx: MyContext) {
 🆔 <code>${ctx.from.id}</code>${openChatText}${bio}
 
 <b>🌐 language_code:</b> ${ctx.from.language_code}
+${aiRating}
     `,
     {
       message_thread_id: telegramTopic.message_thread_id,

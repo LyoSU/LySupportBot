@@ -26,6 +26,7 @@
     "express-rate-limit": "^6.7.0",
     "grammy": "^1.13.1",
     "mongoose": "^6.9.1",
+    "openai": "^3.2.1",
     "qs": "^6.10.3",
     "winston": "^3.8.2"
   },
