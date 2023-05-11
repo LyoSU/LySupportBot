@@ -34,10 +34,7 @@ async function importanceRatingAI(text: string, retries = 0) {
         },
       ],
       max_tokens: 64,
-      temperature: 1,
-      top_p: 1,
-      frequency_penalty: 0.0,
-      presence_penalty: 0.0,
+      temperature: 0.0,
     })
     .catch((err) => {
       console.error("OpenAI error:", err?.response?.statusText || err.message);
@@ -60,7 +57,7 @@ async function importanceRatingAI(text: string, retries = 0) {
     return importanceRatingAI(text, retries + 1);
   }
 
-  let aiResponseJson: { ok: any; importance: any; category: any; };
+  let aiResponseJson: { ok: any; importance: any; category: any };
   try {
     aiResponseJson = JSON.parse(aiResponseText);
   } catch (err) {
