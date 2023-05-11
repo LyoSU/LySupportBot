@@ -60,7 +60,12 @@ async function importanceRatingAI(text: string, retries = 0) {
     return importanceRatingAI(text, retries + 1);
   }
 
-  const aiResponseJson = JSON.parse(aiResponseText);
+  let aiResponseJson: { ok: any; importance: any; category: any; };
+  try {
+    aiResponseJson = JSON.parse(aiResponseText);
+  } catch (err) {
+    return importanceRatingAI(text, retries + 1);
+  }
 
   // retry if failed or not valid json
   if (
@@ -118,7 +123,7 @@ async function createTopic(ctx: MyContext) {
         topicTitle = `🔺 ${topicTitle}`;
       }
     } else {
-      aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.error}`;
+      aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse?.error || "error"}`;
     }
   }
 
