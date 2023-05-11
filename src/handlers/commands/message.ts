@@ -35,6 +35,9 @@ async function importanceRatingAI(text: string, retries = 0) {
       ],
       max_tokens: 64,
       temperature: 0.0,
+      top_p: 0.0,
+      frequency_penalty: 0.0,
+      presence_penalty: 0.0,
     })
     .catch((err) => {
       console.error("OpenAI error:", err?.response?.statusText || err.message);
