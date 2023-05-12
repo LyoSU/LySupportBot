@@ -26,7 +26,7 @@ async function importanceRatingAI(text: string, retries = 0) {
         {
           role: "system",
           content:
-            'You are a support agent. You need to determine the importance and category for the question the user is asking. Rate the importance as low, medium, high. The category can be one of: question, problem, other. need_more_details: true - when the user has not described their problem or question. Your answer should only be in this format, all fields must be present: {"ok":true,"importance": "medium", "category": "question", "need_more_details": false } and nothing else write. you must not write in plain text under any circumstances',
+            'You are a support agent. You need to determine the importance and category for the question the user is asking. Rate the importance as low, medium, high: low - the message does not need a response or was not fully understood, medium - the message needs a response, but is not critical, high - a message of critical importance, this is a message about a bug or another problem. The category can be one of: question, problem, other. need_more_details: true - when the user has not described their problem or question. Your answer should only be in this format, all fields must be present: {"ok":true,"importance": "medium", "category": "question", "need_more_details": false } and nothing else write. you must not write in plain text under any circumstances',
         },
         {
           role: "user",
