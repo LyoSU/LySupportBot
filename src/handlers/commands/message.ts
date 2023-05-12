@@ -26,7 +26,7 @@ async function importanceRatingAI(text: string, retries = 0) {
         {
           role: "system",
           content:
-            'You are a support agent. You need to determine the importance and category for the question the user is asking. Rate the importance as low, medium, high. The category can be one of: question, problem, other. need_more_details e.g. when the user has not described their problem or question. Your answer should only be in this format: {"ok":true,"importance": "medium", "category": "question", "need_more_details": false }. response should always be only valid json and nothing else write',
+            'You are a support agent. You need to determine the importance and category for the question the user is asking. Rate the importance as low, medium, high. The category can be one of: question, problem, other. need_more_details: true - when the user has not described their problem or question. Your answer should only be in this format, all fields must be present: {"ok":true,"importance": "medium", "category": "question", "need_more_details": false } and nothing else write. you must not write in plain text under any circumstances',
         },
         {
           role: "user",
@@ -50,7 +50,7 @@ async function importanceRatingAI(text: string, retries = 0) {
     !aiResponse.data.choices ||
     !aiResponse.data.choices[0]
   ) {
-    await new Promise((resolve) => setTimeout(resolve, 2000 * (retries + 1))); // wait 2s, 4s, 6s before retrying
+    await new Promise((resolve) => setTimeout(resolve, 1000 * (retries * 2)));
     return importanceRatingAI(text, retries + 1);
   }
 
@@ -123,10 +123,7 @@ async function createTopic(ctx: MyContext) {
       }
 
       if (aiResponse.need_more_details) {
-        ctx.api.sendMessage(
-          chatId,
-          ctx.t("need_more_details")
-        );
+        await ctx.reply(ctx.t("need_more_details"));
       }
     } else {
       aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse?.error || "error"}`;

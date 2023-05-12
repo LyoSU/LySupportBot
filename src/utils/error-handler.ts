@@ -18,7 +18,7 @@ async function errorHandler(err: BotError<MyContext>, res: any) {
   } else {
     console.error(e);
 
-    logger.error(`Unknown error: ${e}, update: ${JSON.stringify(ctx.update)}`);
+    logger.error(`Unknown error: ${e}, update: ${JSON.stringify(ctx?.update)}`);
   }
 
   try {
