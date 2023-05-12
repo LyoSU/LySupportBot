@@ -4,6 +4,9 @@ welcome_end =
 welcome_message =
     Hey! Write your message and we will try to answer as soon as possible
 
+need_more_details =
+    Please, send more details about your problem or question for a quick solution.
+
 not_enough_rights =
     The bot does not have enough rights to work.
     Please give him administrator rights with the ability to manage topics.

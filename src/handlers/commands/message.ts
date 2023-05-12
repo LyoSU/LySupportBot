@@ -26,7 +26,7 @@ async function importanceRatingAI(text: string, retries = 0) {
         {
           role: "system",
           content:
-            'You are a support agent. You need to determine the importance and category for the question the user is asking. Rate the importance as low, medium, high. The category can be one of: question, problem, more_details, other. Your answer should only be in this format: {"ok":true,"importance": "medium", "category": "question" } and nothing else write.',
+            'You are a support agent. You need to determine the importance and category for the question the user is asking. Rate the importance as low, medium, high. The category can be one of: question, problem, other. need_more_details e.g. when the user has not described their problem or question. Your answer should only be in this format: {"ok":true,"importance": "medium", "category": "question", "need_more_details": false }. response should always be only valid json and nothing else write',
         },
         {
           role: "user",
@@ -50,24 +50,23 @@ async function importanceRatingAI(text: string, retries = 0) {
     !aiResponse.data.choices ||
     !aiResponse.data.choices[0]
   ) {
+    await new Promise((resolve) => setTimeout(resolve, 2000 * (retries + 1))); // wait 2s, 4s, 6s before retrying
     return importanceRatingAI(text, retries + 1);
   }
 
   const aiResponseText = aiResponse.data.choices[0].message.content;
 
-  // retry if failed or not valid json
   if (!aiResponseText) {
     return importanceRatingAI(text, retries + 1);
   }
 
   let aiResponseJson: { ok: any; importance: any; category: any };
   try {
-    aiResponseJson = JSON.parse(aiResponseText);
+    aiResponseJson = JSON.parse(aiResponseText.match(/{.*}/)?.[0] || "");
   } catch (err) {
     return importanceRatingAI(text, retries + 1);
   }
 
-  // retry if failed or not valid json
   if (
     !aiResponseJson ||
     !aiResponseJson.ok ||
@@ -121,6 +120,13 @@ async function createTopic(ctx: MyContext) {
         topicTitle = `🔸 ${topicTitle}`;
       } else if (aiResponse.importance === "high") {
         topicTitle = `🔺 ${topicTitle}`;
+      }
+
+      if (aiResponse.need_more_details) {
+        ctx.api.sendMessage(
+          chatId,
+          ctx.t("need_more_details")
+        );
       }
     } else {
       aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse?.error || "error"}`;
@@ -234,7 +240,9 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     });
 
     if (ctx.session.bot.settings.ai) {
-      const aiResponse = await importanceRatingAI(ctx?.message?.text || ctx?.message?.caption || "[no text]").catch((err) => {
+      const aiResponse = await importanceRatingAI(
+        ctx?.message?.text || ctx?.message?.caption || "[no text]"
+      ).catch((err) => {
         console.error(
           "OpenAI error:",
           err?.response?.statusText || err.message
