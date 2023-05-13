@@ -32,7 +32,7 @@ async function userChat(ctx: MyContext & { chat: Chat.PrivateChat }) {
 
 async function deleteSystemMessages(ctx: MyContext, next: NextFunction) {
   if (ctx.message?.from?.is_bot && ctx.message?.forum_topic_edited) {
-    await ctx.deleteMessage();
+    await ctx.deleteMessage().catch(console.error);
   }
 
   return next();

@@ -409,12 +409,7 @@ async function editMessage(ctx: MyContext) {
   const message = await db.Messages.findOne(find);
 
   if (!message) {
-    return ctx.reply(
-      "🚫 Edit message not supported yet, send a new message instead",
-      {
-        reply_to_message_id: ctx.editedMessage.message_id,
-      }
-    );
+    return;
   }
 
   if (ctx.editedMessage.text) {
@@ -442,7 +437,7 @@ async function editMessage(ctx: MyContext) {
       type = "video";
     } else {
       return ctx.reply(
-        "🚫 Edit message not supported yet, send a new message instead",
+        "🚫 This message type cannot be edited yet, try sending it again",
         {
           reply_to_message_id: ctx.editedMessage.message_id,
         }

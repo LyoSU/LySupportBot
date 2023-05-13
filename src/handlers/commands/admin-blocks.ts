@@ -275,7 +275,7 @@ async function deleteBlock(ctx: MyContext) {
 
   await ctx.answerCallbackQuery(ctx.t("block_deleted"));
 
-  await ctx.deleteMessage();
+  await ctx.deleteMessage().catch(() => {});
 }
 
 async function editBlockName(conversation: MyConversation, ctx: MyContext) {
