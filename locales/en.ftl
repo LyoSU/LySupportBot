@@ -5,6 +5,8 @@ welcome_message =
     Hey! Write your message and we will try to answer as soon as possible
 
 need_more_details =
+    <b>Your message was not sent</b>
+
     Please, send more details about your problem or question for a quick solution.
 
 not_enough_rights =

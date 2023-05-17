@@ -12,7 +12,7 @@ const openaiConfiguration = new Configuration({
 const openai = new OpenAIApi(openaiConfiguration);
 
 async function importanceRatingAI(text: string, retries = 0) {
-  if (retries > 3) {
+  if (retries > 2) {
     return {
       ok: false,
       error: "OpenAI error",
@@ -26,7 +26,7 @@ async function importanceRatingAI(text: string, retries = 0) {
         {
           role: "system",
           content:
-            'You are a support agent. You need to determine the importance and category for the question the user is asking. Rate the importance as low, medium, high: low - the message does not need a response or was not fully understood, medium - the message needs a response, but is not critical, high - a message of critical importance, this is a message about a bug or another problem. The category can be one of: question, problem, other. need_more_details: true - when the user has not described their problem or question. Your answer should only be in this format, all fields must be present: {"ok":true,"importance": "medium", "category": "question", "need_more_details": false } and nothing else write. you must not write in plain text under any circumstances',
+            'You are a support agent. You need to determine the importance and category for the question the user is asking. Rate the importance as low, medium, high: low - the message does not need a response, medium - the message needs a response, but is not critical, high - a message of critical importance, this is a message about a bug or another problem. The category can be one of: question, problem, other. need_more_details: true - when the user has not described their problem or question. Your answer should only be in this format, all fields must be present: {"ok":true,"importance": "low", "category": "question", "need_more_details": true } and nothing else write. you must not write in plain text under any circumstances',
         },
         {
           role: "user",
@@ -50,7 +50,7 @@ async function importanceRatingAI(text: string, retries = 0) {
     !aiResponse.data.choices ||
     !aiResponse.data.choices[0]
   ) {
-    await new Promise((resolve) => setTimeout(resolve, 1000 * (retries * 2)));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     return importanceRatingAI(text, retries + 1);
   }
 
@@ -109,7 +109,7 @@ async function createTopic(ctx: MyContext) {
   if (ctx.session.bot.settings.ai) {
     const aiResponse = await importanceRatingAI(
       ctx?.message?.text || ctx?.message?.caption || "[no text]"
-    ).catch((err) => {
+    ).catch((err: { response: { statusText: any }; message: any }) => {
       console.error("OpenAI error:", err?.response?.statusText || err.message);
     });
 
@@ -123,7 +123,9 @@ async function createTopic(ctx: MyContext) {
       }
 
       if (aiResponse.need_more_details) {
-        await ctx.reply(ctx.t("need_more_details"));
+        ctx.reply(ctx.t("need_more_details"));
+
+        return;
       }
     } else {
       aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse?.error || "error"}`;
@@ -213,6 +215,10 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
 
   if (!topic) {
     topic = await createTopic(ctx);
+
+    if (!topic) {
+      return;
+    }
   }
 
   if (topic.is_blocked) {
@@ -299,6 +305,10 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     if (error.description.includes("thread not found")) {
       topic = await createTopic(ctx);
 
+      if (!topic) {
+        return;
+      }
+
       return ctx.api[sendMethod](chatId, ctx.chat.id, ctx.message.message_id, {
         message_thread_id: topic.thread_id,
       });
@@ -306,6 +316,10 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
 
     throw new Error(error);
   });
+
+  if (!result) {
+    return;
+  }
 
   db.Messages.create({
     from: {
