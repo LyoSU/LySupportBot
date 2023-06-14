@@ -11,28 +11,67 @@ const openaiConfiguration = new Configuration({
 });
 const openai = new OpenAIApi(openaiConfiguration);
 
-async function importanceRatingAI(text: string, retries = 0) {
+async function importanceRatingAI(
+  text: string,
+  retries = 0
+): Promise<
+  | {
+      importance: string;
+      category: string;
+      need_more_details: boolean;
+    }
+  | Error
+> {
   if (retries > 2) {
-    return {
-      ok: false,
-      error: "OpenAI error",
-    };
+    return new Error("Too many retries");
   }
 
   const aiResponse = await openai
     .createChatCompletion({
-      model: "gpt-3.5-turbo",
+      model: "gpt-3.5-turbo-0613",
       messages: [
         {
           role: "system",
           content:
-            'You are a support agent. You need to determine the importance and category for the question the user is asking. Rate the importance as low, medium, high: low - the message does not need a response, medium - the message needs a response, but is not critical, high - a message of critical importance, this is a message about a bug or another problem. The category can be one of: question, problem, other. need_more_details: true - when the user has not described their problem or question. Your answer should only be in this format, all fields must be present: {"ok":true,"importance": "low", "category": "question", "need_more_details": true } and nothing else write. you must not write in plain text under any circumstances',
+            "You are a support agent. You need to determine the importance and category for the question the user is asking.",
         },
         {
           role: "user",
           content: text,
         },
       ],
+      functions: [
+        {
+          name: "rate_importance",
+          description: "Rate the importance of the message",
+          parameters: {
+            type: "object",
+            properties: {
+              importance: {
+                type: "string",
+                description:
+                  "Rate the importance as low, medium, high: low - the message does not need a response, medium - the message needs a response, but is not critical, high - a message of critical importance, this is a message about a bug or another problem",
+                enum: ["low", "medium", "high"],
+              },
+              category: {
+                type: "string",
+                description:
+                  "The category can be one of: question, problem, other",
+                enum: ["question", "problem", "other"],
+              },
+              need_more_details: {
+                type: "boolean",
+                description:
+                  "true - when the user has not described their problem or question in enough detail and you need to ask them to describe it in more detail",
+              },
+            },
+            required: ["text", "importance", "category", "need_more_details"],
+          },
+        },
+      ],
+      function_call: {
+        name: "rate_importance",
+      },
       max_tokens: 128,
       presence_penalty: 0,
       frequency_penalty: 0,
@@ -54,22 +93,26 @@ async function importanceRatingAI(text: string, retries = 0) {
     return importanceRatingAI(text, retries + 1);
   }
 
-  const aiResponseText = aiResponse.data.choices[0].message.content;
+  const aiResponseText =
+    aiResponse.data.choices[0].message.function_call.arguments;
 
   if (!aiResponseText) {
     return importanceRatingAI(text, retries + 1);
   }
 
-  let aiResponseJson: { ok: any; importance: any; category: any };
+  let aiResponseJson: {
+    importance: string;
+    category: string;
+    need_more_details: boolean;
+  };
   try {
-    aiResponseJson = JSON.parse(aiResponseText.match(/{.*}/)?.[0] || "");
+    aiResponseJson = JSON.parse(aiResponseText);
   } catch (err) {
     return importanceRatingAI(text, retries + 1);
   }
 
   if (
     !aiResponseJson ||
-    !aiResponseJson.ok ||
     !aiResponseJson.importance ||
     !aiResponseJson.category
   ) {
@@ -107,13 +150,18 @@ async function createTopic(ctx: MyContext) {
   let aiRating = "" as string;
 
   if (ctx.session.bot.settings.ai) {
-    const aiResponse = await importanceRatingAI(
+    const aiResponse = (await importanceRatingAI(
       ctx?.message?.text || ctx?.message?.caption || "[no text]"
-    ).catch((err: { response: { statusText: any }; message: any }) => {
-      console.error("OpenAI error:", err?.response?.statusText || err.message);
-    });
+    )) as {
+      importance: string;
+      category: string;
+      need_more_details: boolean;
+      error?: string;
+    };
 
-    if (aiResponse?.ok) {
+    if (aiResponse instanceof Error) {
+      aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.message}`;
+    } else {
       aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.importance} (${aiResponse.category})`;
 
       if (aiResponse.importance === "medium") {
@@ -127,8 +175,6 @@ async function createTopic(ctx: MyContext) {
 
         return;
       }
-    } else {
-      aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse?.error || "error"}`;
     }
   }
 
@@ -245,14 +291,11 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     if (ctx.session.bot.settings.ai) {
       const aiResponse = await importanceRatingAI(
         ctx?.message?.text || ctx?.message?.caption || "[no text]"
-      ).catch((err) => {
-        console.error(
-          "OpenAI error:",
-          err?.response?.statusText || err.message
-        );
-      });
+      );
 
-      if (aiResponse?.ok) {
+      if (aiResponse instanceof Error) {
+        messageText += `\n\n<b>🤖 AI rating:</b> ${aiResponse.message}`;
+      } else {
         messageText += `\n\n<b>🤖 AI rating:</b> ${aiResponse.importance} (${aiResponse.category})`;
       }
     }
