@@ -61,8 +61,7 @@ async function importanceRatingAI(
               },
               need_more_details: {
                 type: "boolean",
-                description:
-                  "true - when the user has not described their problem or question in enough detail and you need to ask them to describe it in more detail",
+                description: "Pass true if you need more details to determine the importance and category",
               },
             },
             required: ["text", "importance", "category", "need_more_details"],
