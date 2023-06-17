@@ -43,7 +43,7 @@ async function importanceRatingAI(
       functions: [
         {
           name: "rate_importance",
-          description: "Rate the importance of the message",
+          description: "Rate the importance of the message and its category",
           parameters: {
             type: "object",
             properties: {
@@ -61,7 +61,8 @@ async function importanceRatingAI(
               },
               need_more_details: {
                 type: "boolean",
-                description: "Pass true if you need more details to determine the importance and category",
+                description:
+                  "Do you need additional information from the user to solve a problem or answer a question? Also true if the message is inane or spam",
               },
             },
             required: ["text", "importance", "category", "need_more_details"],
@@ -163,13 +164,11 @@ async function createTopic(ctx: MyContext) {
     } else {
       aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.importance} (${aiResponse.category})`;
 
-      if (aiResponse.importance === "medium") {
-        topicTitle = `🔸 ${topicTitle}`;
-      } else if (aiResponse.importance === "high") {
+      if (aiResponse.importance === "high") {
         topicTitle = `🔺 ${topicTitle}`;
       }
 
-      if (aiResponse.need_more_details) {
+      if (aiResponse.need_more_details || aiResponse.importance === "low") {
         ctx.reply(ctx.t("need_more_details"));
 
         return;
