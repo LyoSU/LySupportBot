@@ -150,14 +150,11 @@ async function createTopic(ctx: MyContext) {
   let aiRating = "" as string;
 
   if (ctx.session.bot.settings.ai) {
-    const aiResponse = (await importanceRatingAI(
+    const aiResponse = await importanceRatingAI(
       ctx?.message?.text || ctx?.message?.caption || "[no text]"
-    )) as {
-      importance: string;
-      category: string;
-      need_more_details: boolean;
-      error?: string;
-    };
+    ).catch((err) => {
+      return err;
+    });
 
     if (aiResponse instanceof Error) {
       aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.message}`;
@@ -289,7 +286,9 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     if (ctx.session.bot.settings.ai) {
       const aiResponse = await importanceRatingAI(
         ctx?.message?.text || ctx?.message?.caption || "[no text]"
-      );
+      ).catch((err) => {
+        return err;
+      });
 
       if (aiResponse instanceof Error) {
         messageText += `\n\n<b>🤖 AI rating:</b> ${aiResponse.message}`;
