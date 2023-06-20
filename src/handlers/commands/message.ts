@@ -20,10 +20,14 @@ async function importanceRatingAI(
       category: string;
       need_more_details: boolean;
     }
-  | Error
+  | {
+      error: string;
+    }
 > {
   if (retries > 2) {
-    return new Error("Too many retries");
+    return {
+      error: "Too many retries",
+    };
   }
 
   const aiResponse = await openai
@@ -80,6 +84,7 @@ async function importanceRatingAI(
     })
     .catch((err) => {
       console.error("OpenAI error:", err?.response?.statusText || err.message);
+      return err;
     });
 
   // retry if failed
@@ -156,7 +161,7 @@ async function createTopic(ctx: MyContext) {
       return err;
     });
 
-    if (aiResponse instanceof Error) {
+    if (aiResponse.error) {
       aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.message}`;
     } else {
       aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.importance} (${aiResponse.category})`;
@@ -290,7 +295,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
         return err;
       });
 
-      if (aiResponse instanceof Error) {
+      if (aiResponse.error) {
         messageText += `\n\n<b>🤖 AI rating:</b> ${aiResponse.message}`;
       } else {
         messageText += `\n\n<b>🤖 AI rating:</b> ${aiResponse.importance} (${aiResponse.category})`;
