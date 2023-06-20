@@ -24,7 +24,7 @@ async function importanceRatingAI(
       error: string;
     }
 > {
-  if (retries > 2) {
+  if (retries > 0) {
     return {
       error: "Too many retries",
     };
