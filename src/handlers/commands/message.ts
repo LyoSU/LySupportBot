@@ -18,13 +18,12 @@ async function importanceRatingAI(
   | {
       importance: string;
       category: string;
-      need_more_details: boolean;
     }
   | {
       error: string;
     }
 > {
-  if (retries > 0) {
+  if (retries > 1) {
     return {
       error: "Too many retries",
     };
@@ -37,7 +36,7 @@ async function importanceRatingAI(
         {
           role: "system",
           content:
-            "You are a support agent. You need to determine the importance and category for the question the user is asking.",
+            "You are a moderator of messages to the user support service. Your task is to filter user messages sent to the support agent.",
         },
         {
           role: "user",
@@ -46,41 +45,32 @@ async function importanceRatingAI(
       ],
       functions: [
         {
-          name: "rate_importance",
-          description: "Rate the importance of the message and its category",
+          name: "send_message",
+          description: "Send a message to the support agent",
           parameters: {
             type: "object",
             properties: {
               importance: {
                 type: "string",
                 description:
-                  "Rate the importance as low, medium, high: low - the message does not need a response, medium - the message needs a response, but is not critical, high - a message of critical importance, this is a message about a bug or another problem",
+                  "How badly a user's message needs a response: low - no need to send a message, medium - message must be sent, but is not critical, high - a message of critical importance, this is a message about a bug or another problem",
                 enum: ["low", "medium", "high"],
               },
               category: {
                 type: "string",
-                description:
-                  "The category can be one of: question, problem, other",
+                description: "User message category for support agent",
                 enum: ["question", "problem", "other"],
               },
-              need_more_details: {
-                type: "boolean",
-                description:
-                  "Do you need additional information from the user to solve a problem or answer a question? Also true if the message is inane or spam",
-              },
             },
-            required: ["text", "importance", "category", "need_more_details"],
+            required: ["text", "importance", "category"],
           },
         },
       ],
       function_call: {
-        name: "rate_importance",
+        name: "send_message",
       },
-      max_tokens: 128,
-      presence_penalty: 0,
-      frequency_penalty: 0,
+      max_tokens: 256,
       temperature: 0,
-      top_p: 0,
     })
     .catch((err) => {
       console.error("OpenAI error:", err?.response?.statusText || err.message);
@@ -108,7 +98,6 @@ async function importanceRatingAI(
   let aiResponseJson: {
     importance: string;
     category: string;
-    need_more_details: boolean;
   };
   try {
     aiResponseJson = JSON.parse(aiResponseText);
@@ -162,7 +151,7 @@ async function createTopic(ctx: MyContext) {
     });
 
     if (aiResponse.error) {
-      aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.message}`;
+      aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.error}`;
     } else {
       aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.importance} (${aiResponse.category})`;
 
@@ -170,7 +159,7 @@ async function createTopic(ctx: MyContext) {
         topicTitle = `🔺 ${topicTitle}`;
       }
 
-      if (aiResponse.need_more_details || aiResponse.importance === "low") {
+      if (aiResponse.importance === "low") {
         ctx.reply(ctx.t("need_more_details"));
 
         return;
@@ -296,7 +285,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
       });
 
       if (aiResponse.error) {
-        messageText += `\n\n<b>🤖 AI rating:</b> ${aiResponse.message}`;
+        messageText += `\n\n<b>🤖 AI rating:</b> ${aiResponse.error}`;
       } else {
         messageText += `\n\n<b>🤖 AI rating:</b> ${aiResponse.importance} (${aiResponse.category})`;
       }
