@@ -35,42 +35,28 @@ async function importanceRatingAI(
       messages: [
         {
           role: "system",
-          content:
-            "You are a moderator of messages to the user support service. Your task is to filter user messages sent to the support agent.",
+          content: `You are a support agent
+You need to determine the importance and category for the question the user is asking
+- Rate the importance as low, medium, high:
+low - the message does not need a response
+medium - the message needs a response, but is not critical
+high - a message of critical importance, this is a message about a bug or another problem
+- The category can be one of: question, problem, other
+- Come up with a title of 2-5 words
+
+Send the result in a valid JSON format, making sure to escape characters if necessary, like this:
+{ "importance": "low", "category": "question", "title": "fStikBot doesn't add sticker" }
+`,
         },
         {
           role: "user",
-          content: text,
+          content: JSON.stringify({
+            text,
+          }),
         },
       ],
-      functions: [
-        {
-          name: "send_message",
-          description: "Send a message to the support agent",
-          parameters: {
-            type: "object",
-            properties: {
-              importance: {
-                type: "string",
-                description:
-                  "How badly a user's message needs a response: low - no need to send a message, medium - message must be sent, but is not critical, high - a message of critical importance, this is a message about a bug or another problem",
-                enum: ["low", "medium", "high"],
-              },
-              category: {
-                type: "string",
-                description: "User message category for support agent",
-                enum: ["question", "problem", "other"],
-              },
-            },
-            required: ["text", "importance", "category"],
-          },
-        },
-      ],
-      function_call: {
-        name: "send_message",
-      },
       max_tokens: 256,
-      temperature: 0,
+      temperature: 0.0,
     })
     .catch((err) => {
       console.error("OpenAI error:", err?.response?.statusText || err.message);
@@ -88,8 +74,7 @@ async function importanceRatingAI(
     return importanceRatingAI(text, retries + 1);
   }
 
-  const aiResponseText =
-    aiResponse.data.choices[0].message.function_call.arguments;
+  const aiResponseText = aiResponse.data.choices[0].message.content;
 
   if (!aiResponseText) {
     return importanceRatingAI(text, retries + 1);
@@ -138,22 +123,34 @@ async function createTopic(ctx: MyContext) {
 
   name = escapeHtml(name);
 
-  let topicTitle = name;
+  let topicTitle = ctx.from.first_name;
   const iconColor = topicIconColors[ctx.from.id % topicIconColors.length];
 
   let aiRating = "" as string;
 
+  const text = ctx?.message?.text || ctx?.message?.caption || "[no text]";
+
+  if (
+    ctx.session.bot.settings.minWords &&
+    ctx.session.bot.settings.minWords > 0 &&
+    text.split(" ").length < ctx.session.bot.settings.minWords
+  ) {
+    ctx.reply(ctx.t("need_more_details"));
+
+    return;
+  }
+
   if (ctx.session.bot.settings.ai) {
-    const aiResponse = await importanceRatingAI(
-      ctx?.message?.text || ctx?.message?.caption || "[no text]"
-    ).catch((err) => {
+    const aiResponse = await importanceRatingAI(text).catch((err) => {
       return err;
     });
 
     if (aiResponse.error) {
       aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.error}`;
     } else {
-      aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.importance} (${aiResponse.category})`;
+      aiRating = `\n<b>🏷 AI Title:</b> ${aiResponse.title}\n<b>🤖 AI rating:</b> ${aiResponse.importance} (${aiResponse.category})`;
+
+      topicTitle = aiResponse.title;
 
       if (aiResponse.importance === "high") {
         topicTitle = `🔺 ${topicTitle}`;
