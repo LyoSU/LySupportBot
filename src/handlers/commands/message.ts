@@ -466,7 +466,13 @@ async function editMessage(ctx: MyContext) {
         entities: ctx.editedMessage.entities,
         parse_mode: null,
       }
-    );
+    ).catch((error) => {
+      if (error.description.includes("message is not modified")) {
+        return;
+      }
+
+      throw new Error(error);
+    })
   } else {
     let type: "animation" | "document" | "audio" | "photo" | "video";
 
