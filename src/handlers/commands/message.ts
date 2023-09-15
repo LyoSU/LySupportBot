@@ -323,7 +323,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     }
   }
 
-  const result = await ctx.api[sendMethod](
+  let result = await ctx.api[sendMethod](
     chatId,
     ctx.chat.id,
     ctx.message.message_id,
@@ -332,24 +332,37 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
       reply_to_message_id: replyTo,
       allow_sending_without_reply: true,
     }
-  ).catch(async (error) => {
+  ).catch((error) => {
     if (error.description.includes("thread not found")) {
-      topic = await createTopic(ctx);
-
-      if (!topic) {
-        return;
-      }
-
-      return ctx.api[sendMethod](chatId, ctx.chat.id, ctx.message.message_id, {
-        message_thread_id: topic.thread_id,
-      });
+      return {
+        message_id: null,
+      };
     }
 
     throw new Error(error);
   });
 
+  if (result?.message_id === null) {
+    topic = await createTopic(ctx);
+
+    if (!topic) {
+      return;
+    }
+
+    result = await ctx.api[sendMethod](
+      chatId,
+      ctx.chat.id,
+      ctx.message.message_id,
+      {
+        message_thread_id: topic.thread_id,
+      }
+    );
+  }
+
   if (!result) {
-    return;
+    return ctx.reply("🚫 This message cannot be sent", {
+      reply_to_message_id: ctx.message.message_id,
+    });
   }
 
   db.Messages.create({
@@ -413,9 +426,11 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
     })
     .catch(async (error) => {
       if (error.description.includes("blocked")) {
-        return ctx.reply("User blocked the bot", {
-          message_thread_id: ctx.message.message_thread_id,
-        }).catch(() => {});
+        return ctx
+          .reply("User blocked the bot", {
+            message_thread_id: ctx.message.message_thread_id,
+          })
+          .catch(() => {});
       } else if (error.description.includes("can't be copied")) {
         return;
       }
@@ -458,21 +473,23 @@ async function editMessage(ctx: MyContext) {
   }
 
   if (ctx.editedMessage.text) {
-    await ctx.api.editMessageText(
-      message.to.chat_id,
-      message.to.message_id,
-      ctx.editedMessage.text,
-      {
-        entities: ctx.editedMessage.entities,
-        parse_mode: null,
-      }
-    ).catch((error) => {
-      if (error.description.includes("message is not modified")) {
-        return;
-      }
+    await ctx.api
+      .editMessageText(
+        message.to.chat_id,
+        message.to.message_id,
+        ctx.editedMessage.text,
+        {
+          entities: ctx.editedMessage.entities,
+          parse_mode: null,
+        }
+      )
+      .catch((error) => {
+        if (error.description.includes("message is not modified")) {
+          return;
+        }
 
-      throw new Error(error);
-    })
+        throw new Error(error);
+      });
   } else {
     let type: "animation" | "document" | "audio" | "photo" | "video";
 
