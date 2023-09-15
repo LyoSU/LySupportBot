@@ -8,6 +8,8 @@ async function errorHandler(err: BotError<MyContext>, res: any) {
   // logger.error(
   //   `Process update [ID:${ctx.update.update_id}]: [failed] (in ${timeout}ms)`
   // );
+  console.error(err);
+
   const e = err.error;
   if (e instanceof BotError) {
     logger.error(`Error in bot: ${e.ctx}`);
@@ -16,17 +18,9 @@ async function errorHandler(err: BotError<MyContext>, res: any) {
   } else if (e instanceof HttpError) {
     logger.error(`Could not contact Telegram: ${e}`);
   } else {
-    if (e) {
-      console.error(e);
+    console.error(e);
 
-      logger.error(
-        `Unknown error: ${e}, update: ${JSON.stringify(ctx?.update)}`
-      );
-    } else {
-      logger.error(
-        `Unknown error: ${err}, update: ${JSON.stringify(ctx?.update)}`
-      );
-    }
+    logger.error(`Unknown error: ${e}, update: ${JSON.stringify(ctx?.update)}`);
   }
 
   try {
