@@ -135,7 +135,7 @@ async function createTopic(ctx: MyContext) {
     ctx.session.bot.settings.minWords > 0 &&
     text.split(" ").length < ctx.session.bot.settings.minWords
   ) {
-    ctx.reply(ctx.t("need_more_details"));
+    await ctx.reply(ctx.t("need_more_details"));
 
     return;
   }
@@ -157,7 +157,7 @@ async function createTopic(ctx: MyContext) {
       }
 
       if (aiResponse.importance === "low") {
-        ctx.reply(ctx.t("need_more_details"));
+        await ctx.reply(ctx.t("need_more_details"));
 
         return;
       }
@@ -415,7 +415,7 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
       if (error.description.includes("blocked")) {
         return ctx.reply("User blocked the bot", {
           message_thread_id: ctx.message.message_thread_id,
-        });
+        }).catch(() => {});
       } else if (error.description.includes("can't be copied")) {
         return;
       }
