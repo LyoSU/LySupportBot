@@ -22,9 +22,11 @@ async function errorHandler(err: BotError<MyContext>, res: any) {
   }
 
   try {
-    await ctx.reply(ctx.t("error")).catch((error) => {
-      logger.error(`Error in error handler: ${error}`);
-    });
+    if (ctx) {
+      await ctx.reply(ctx.t("error")).catch((error) => {
+        logger.error(`Error in error handler: ${error}`);
+      });
+    }
 
     return res.status(200).send("error handled");
   } catch (error) {
