@@ -170,7 +170,7 @@ async function createTopic(ctx: MyContext) {
     })
     .catch((error) => {
       if (error.description.includes("not enough rights")) {
-        ctx.api.sendMessage(chatId, ctx.t("not_enough_rights"));
+        ctx.api.sendMessage(chatId, ctx.t("not_enough_rights")).catch(() => {});
       }
 
       throw new Error(error);
