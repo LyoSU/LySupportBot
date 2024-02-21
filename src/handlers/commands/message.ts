@@ -16,12 +16,12 @@ async function importanceRatingAI(
   retries = 0
 ): Promise<
   | {
-      importance: string;
-      category: string;
-    }
+    importance: string;
+    category: string;
+  }
   | {
-      error: string;
-    }
+    error: string;
+  }
 > {
   if (retries > 1) {
     return {
@@ -31,7 +31,7 @@ async function importanceRatingAI(
 
   const aiResponse = await openai
     .createChatCompletion({
-      model: "gpt-3.5-turbo-0613",
+      model: "gpt-3.5-turbo-0125",
       messages: [
         {
           role: "system",
@@ -141,6 +141,13 @@ async function createTopic(ctx: MyContext) {
   }
 
   if (ctx.session.bot.settings.ai) {
+    // if 3 or less words, don't use AI
+    if (text.split(" ").length <= 3) {
+      await ctx.reply(ctx.t("need_more_details"));
+
+      return;
+    }
+
     const aiResponse = await importanceRatingAI(text).catch((err) => {
       return err;
     });
@@ -170,7 +177,7 @@ async function createTopic(ctx: MyContext) {
     })
     .catch((error) => {
       if (error.description.includes("not enough rights")) {
-        ctx.api.sendMessage(chatId, ctx.t("not_enough_rights")).catch(() => {});
+        ctx.api.sendMessage(chatId, ctx.t("not_enough_rights")).catch(() => { });
       }
 
       throw new Error(error);
@@ -292,7 +299,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
       .sendMessage(chatId, messageText, {
         message_thread_id: topic.thread_id,
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => {
         ctx.session.state.blocksChain = [];
       });
@@ -430,7 +437,7 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
           .reply("User blocked the bot", {
             message_thread_id: ctx.message.message_thread_id,
           })
-          .catch(() => {});
+          .catch(() => { });
       } else if (error.description.includes("can't be copied")) {
         return;
       }
