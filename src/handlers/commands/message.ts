@@ -432,7 +432,7 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
       allow_sending_without_reply: true,
     })
     .catch(async (error) => {
-      if (error.description.includes("blocked")) {
+      if (error?.description?.includes("blocked")) {
         return ctx
           .reply("User blocked the bot", {
             message_thread_id: ctx.message.message_thread_id,
