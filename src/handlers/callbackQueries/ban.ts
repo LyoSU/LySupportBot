@@ -12,16 +12,25 @@ function escapeHtml(s: string) {
 }
 
 async function banUser(ctx: MyContext) {
-  const user = await db.Users.findOne({ telegram_id: ctx.match[1] });
+  let topic
 
-  if (!user) {
-    return ctx.reply("User not found");
+  if (ctx.match) {
+    const user = await db.Users.findOne({ telegram_id: ctx.match[1] });
+
+    if (!user) {
+      return ctx.reply("User not found");
+    }
+
+    topic = await db.Topics.findOne({
+      bot: ctx.session.bot,
+      user: user,
+    }).populate("user");
+  } else if (ctx.message) {
+    topic = await db.Topics.findOne({
+      bot: ctx.session.bot,
+      thread_id: ctx.message.message_thread_id,
+    }).populate("user");
   }
-
-  const topic = await db.Topics.findOne({
-    bot: ctx.session.bot,
-    user: user,
-  });
 
   if (!topic) {
     return ctx.reply("Topic not found");
@@ -31,20 +40,23 @@ async function banUser(ctx: MyContext) {
 
   await topic.save();
 
-  await ctx.answerCallbackQuery("User banned");
+  if (ctx.callbackQuery) {
+    await ctx.answerCallbackQuery("User banned");
 
-  await ctx.editMessageReplyMarkup({
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "🔓 Unban",
-            callback_data: `unban:${ctx.match[1]}`,
-          },
+    await ctx.editMessageReplyMarkup({
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "🔓 Unban",
+              callback_data: `unban:${ctx.match[1]}`,
+            },
+          ],
         ],
-      ],
-    },
-  });
+      },
+    });
+
+  }
 
   return ctx.reply(
     `User banned by <a href="tg://user?id=${ctx.from.id}">${escapeHtml(
@@ -52,6 +64,16 @@ async function banUser(ctx: MyContext) {
     )}</a>`,
     {
       message_thread_id: topic.thread_id,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "🔓 Unban",
+              callback_data: `unban:${topic.user.telegram_id}`,
+            },
+          ],
+        ],
+      },
     }
   );
 }
@@ -104,6 +126,8 @@ async function unbanUser(ctx: MyContext) {
 async function setup(bot: Bot<MyContext>) {
   bot.callbackQuery(/^ban:(\d+)/, banUser);
   bot.callbackQuery(/^unban:(\d+)/, unbanUser);
+  bot.command("ban", banUser);
+  bot.command("unban", unbanUser);
 }
 
 export default { setup };

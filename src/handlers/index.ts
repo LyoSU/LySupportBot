@@ -8,9 +8,9 @@ import { logger } from "../utils";
 import userChat from "./user-chat";
 
 async function setup(bot: Bot<MyContext>) {
+  await callbackQueries.setup(bot);
   await userChat.setup(bot);
   await commands.setup(bot);
-  await callbackQueries.setup(bot);
 }
 
 export default { setup };
