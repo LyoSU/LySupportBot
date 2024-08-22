@@ -37,8 +37,8 @@ async function start() {
           "unknown";
         return token;
       },
-      windowMs: 60 * 1000,
-      max: 30,
+      windowMs: 1000,
+      max: 40,
     })
   );
 
