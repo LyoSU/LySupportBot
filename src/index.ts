@@ -1,88 +1,123 @@
 import { Bot, BotError } from "grammy";
 import { MyContext, MyApi } from "./types";
-
 import dotenv from "dotenv";
-dotenv.config({ path: `${__dirname}/../.env` });
-
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { onlyTelegram } from "./utils";
-
 import { webhookCallback } from "grammy";
-
-import { allowedUpdates, logger, setup, errorHandler } from "./utils";
+import { allowedUpdates, logger, setup, errorHandler, onlyTelegram } from "./utils";
 import { connectMongoose } from "./database/connection";
-
 import db from "./database/models";
 
+// Configure environment variables
+dotenv.config({ path: `${__dirname}/../.env` });
+
 const domain = String(process.env.DOMAIN);
+const port = Number(process.env.PORT);
+const botToken = String(process.env.BOT_TOKEN);
+
+// Initialize Express app
 const app = express();
 
-app.use(onlyTelegram);
+app.use((req, res, next) => {
+  console.log('Request received:', req.method, req.url);
+  next();
+});
 
+// Middleware
+app.use(onlyTelegram);
 app.use(express.json());
 
-async function start() {
-  await connectMongoose();
+// Rate limiting configuration
+const limiter = rateLimit({
+  keyGenerator: (req) => {
+    return (
+      req.query.token ||
+      req.headers["cf-connecting-ip"] ||
+      req.headers["x-real-ip"] ||
+      req.ip ||
+      req.connection.remoteAddress ||
+      "unknown"
+    ).toString();
+  },
+  windowMs: 1000,
+  max: 40,
+});
 
-  app.use(
-    rateLimit({
-      keyGenerator: (req) => {
-        const token =
-          req.query.token ||
-          req.headers["cf-connecting-ip"] ||
-          req.headers["x-real-ip"] ||
-          req.ip ||
-          req.connection.remoteAddress ||
-          "unknown";
-        return token;
-      },
-      windowMs: 1000,
-      max: 40,
-    })
-  );
+async function handleBotRequest(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  const token = req.query.token as string;
 
-  app.use(async (req: express.Request, res: express.Response) => {
-    const token = req.query.token;
+  if (!token) {
+    res.status(401).send("Unauthorized");
+    return;
+  }
 
-    if (!token) {
+  const bot = await db.Bots.findOne({ token });
+
+  if (!bot) {
+    res.status(401).send("Unauthorized");
+    return;
+  }
+
+  const gramBot = new Bot<MyContext, MyApi>(token);
+
+  try {
+    await setup(gramBot);
+
+    if (!gramBot.botInfo) {
       res.status(401).send("Unauthorized");
       return;
     }
 
-    const findBot = db.Bots.findOne({ token });
-
-    if (!findBot) {
-      res.status(401).send("Unauthorized");
-      return;
-    }
-
-    const bot = new Bot<MyContext, MyApi>(token);
-
-    await setup(bot);
-
-    if (!bot.botInfo) {
-      res.status(401).send("Unauthorized");
-      return;
-    }
-
-    return webhookCallback(bot, "express")(req, res).catch(
-      (error: BotError<MyContext>) => {
-        return errorHandler(error, res);
-      }
-    );
-  });
-
-  app.listen(Number(process.env.PORT), async () => {
-    const bot = new Bot<MyContext, MyApi>(String(process.env.BOT_TOKEN));
-
-    await bot.api.setWebhook(
-      `https://${domain}/?token=${String(process.env.BOT_TOKEN)}&` + Date.now(),
-      {
-        allowed_updates: allowedUpdates,
-      }
-    );
-  });
+    await webhookCallback(gramBot, "express")(req, res);
+  } catch (error) {
+    await errorHandler(error as BotError<MyContext>, res);
+  }
 }
 
-start();
+async function setupWebhook(bot: Bot<MyContext, MyApi>): Promise<void> {
+  const webhookUrl = `https://${domain}/?token=${botToken}&${Date.now()}`;
+
+  try {
+    await bot.api.setWebhook(webhookUrl, {
+      allowed_updates: allowedUpdates,
+    });
+    logger.info(`Webhook set to ${webhookUrl}`);
+  } catch (error) {
+    logger.error('Failed to set webhook:', error);
+    process.exit(1);
+  }
+}
+
+async function start(): Promise<void> {
+  try {
+    // Connect to MongoDB
+    await connectMongoose();
+    logger.info('Connected to MongoDB');
+
+    // Apply rate limiting
+    app.use(limiter);
+
+    // Handle bot requests
+    app.use(handleBotRequest);
+
+    // Start server
+    app.listen(port, async () => {
+      logger.info(`Server is running on port ${port}`);
+
+      const mainBot = new Bot<MyContext, MyApi>(botToken);
+      await setupWebhook(mainBot);
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Start the application
+start().catch((error) => {
+  logger.error('Unhandled error during startup:', error);
+  process.exit(1);
+});

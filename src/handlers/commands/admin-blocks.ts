@@ -221,7 +221,7 @@ async function recursiveDeleteBlock(block) {
     }
   }
 
-  await block.remove();
+  await db.Blocks.deleteOne({ _id: block._id });
 }
 
 async function deleteBlock(ctx: MyContext) {
@@ -260,7 +260,7 @@ async function deleteBlock(ctx: MyContext) {
     await recursiveDeleteBlock(block);
   }
 
-  await block.remove();
+  await db.Blocks.deleteOne({ _id: ctx.match[1] });
 
   if (block.name === "main") {
     await db.Bots.updateOne(
@@ -275,7 +275,7 @@ async function deleteBlock(ctx: MyContext) {
 
   await ctx.answerCallbackQuery(ctx.t("block_deleted"));
 
-  await ctx.deleteMessage().catch(() => {});
+  await ctx.deleteMessage().catch(() => { });
 }
 
 async function editBlockName(conversation: MyConversation, ctx: MyContext) {
