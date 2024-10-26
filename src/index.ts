@@ -1,15 +1,16 @@
+import dotenv from "dotenv";
+
+// Configure environment variables
+dotenv.config({ path: `${__dirname}/../.env` });
+
 import { Bot, BotError } from "grammy";
 import { MyContext, MyApi } from "./types";
-import dotenv from "dotenv";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { webhookCallback } from "grammy";
 import { allowedUpdates, logger, setup, errorHandler, onlyTelegram } from "./utils";
 import { connectMongoose } from "./database/connection";
 import db from "./database/models";
-
-// Configure environment variables
-dotenv.config({ path: `${__dirname}/../.env` });
 
 const domain = String(process.env.DOMAIN);
 const port = Number(process.env.PORT);
