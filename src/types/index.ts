@@ -10,6 +10,7 @@ interface SessionData {
   state: { [key: string]: any };
   data: any;
   conversation: { [key: string]: any } | {};
+  conversationsMap: Map<string, any>;
 }
 
 interface DatabaseFlavor {

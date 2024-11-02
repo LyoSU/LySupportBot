@@ -9,7 +9,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import { webhookCallback } from "grammy";
 import { allowedUpdates, logger, setup, errorHandler, onlyTelegram } from "./utils";
-import { connectMongoose } from "./database/connection";
+import { dbConnection } from "./database/connection";
 import db from "./database/models";
 
 const domain = String(process.env.DOMAIN);
@@ -92,10 +92,9 @@ async function setupWebhook(bot: Bot<MyContext, MyApi>): Promise<void> {
   }
 }
 
-async function start(): Promise<void> {
+async function bootstrap() {
   try {
-    // Connect to MongoDB
-    await connectMongoose();
+    await dbConnection.connect();
     logger.info('Connected to MongoDB');
 
     // Apply rate limiting
@@ -118,7 +117,7 @@ async function start(): Promise<void> {
 }
 
 // Start the application
-start().catch((error) => {
+bootstrap().catch((error) => {
   logger.error('Unhandled error during startup:', error);
   process.exit(1);
 });

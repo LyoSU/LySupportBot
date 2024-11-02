@@ -1,72 +1,75 @@
 import mongoose from "mongoose";
+import { logger } from "../utils";
 
-const connectWithRetry = async (retries = 5, delay = 5000): Promise<void> => {
-  try {
-    if (mongoose.connection.readyState !== 0) {
-      await mongoose.connection.close();
+class DatabaseConnection {
+  private static instance: DatabaseConnection;
+  private isConnecting: boolean = false;
+  
+  private constructor() {}
+
+  static getInstance(): DatabaseConnection {
+    if (!DatabaseConnection.instance) {
+      DatabaseConnection.instance = new DatabaseConnection();
+    }
+    return DatabaseConnection.instance;
+  }
+
+  async connect(uri?: string): Promise<mongoose.Connection> {
+    if (this.isConnecting) {
+      logger.info("Connection already in progress");
+      return mongoose.connection;
     }
 
-    if (!process.env.MONGO_URI) {
-      throw new Error("MongoDB URI is not provided");
+    if (mongoose.connection.readyState === 1) {
+      return mongoose.connection;
     }
 
-    await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-      maxPoolSize: 10,
-      minPoolSize: 5,
-      retryWrites: true,
-      heartbeatFrequencyMS: 10000,
-      connectTimeoutMS: 30000,
-      family: 4
-    });
+    this.isConnecting = true;
+    const mongoUri = uri || process.env.MONGO_URI;
 
-    console.log("Successfully connected to MongoDB");
-  } catch (error) {
-    if (retries === 0) {
-      console.error("MongoDB connection error:", error);
-      console.error("Max retries reached. Restarting application...");
-      process.exit(1);
-    } else {
-      console.error(`MongoDB connection error: ${error}. Retrying in ${delay / 1000} seconds...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return connectWithRetry(retries - 1, Math.min(delay * 1.5, 30000)); // Progressive backoff with max 30s
+    try {
+      if (!mongoUri) {
+        throw new Error("MongoDB URI is not provided");
+      }
+
+      await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+        maxPoolSize: 10,
+        minPoolSize: 5,
+        retryWrites: true,
+        heartbeatFrequencyMS: 10000,
+        connectTimeoutMS: 30000,
+        family: 4
+      });
+
+      logger.info("Successfully connected to MongoDB");
+
+      mongoose.connection.on("error", (error) => {
+        logger.error("MongoDB connection error:", error);
+      });
+
+      mongoose.connection.on("disconnected", () => {
+        logger.warn("MongoDB disconnected");
+        this.isConnecting = false;
+      });
+
+      process.on("SIGINT", async () => {
+        await mongoose.connection.close();
+        logger.info("MongoDB connection closed through app termination");
+        process.exit(0);
+      });
+
+      return mongoose.connection;
+    } catch (error) {
+      logger.error("Failed to connect to MongoDB:", error);
+      throw error;
+    } finally {
+      this.isConnecting = false;
     }
   }
-};
+}
 
-// Initial connection
-connectWithRetry();
-
-mongoose.connection.on("error", async (error) => {
-  console.error("MongoDB connection error:", error);
-  if (error.name === "MongoNetworkError" || error.name === "MongoTimeoutError") {
-    console.log("Critical network error detected. Forcing reconnection...");
-    await mongoose.connection.close(true); // Force close
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    connectWithRetry();
-  }
-});
-
-mongoose.connection.on("disconnected", async () => {
-  console.log("MongoDB disconnected. Forcing reconnection...");
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  connectWithRetry();
-});
-
-// Add periodic connection check
-setInterval(async () => {
-  if (mongoose.connection.readyState !== 1) {
-    console.log("Detected unhealthy connection state. Initiating reconnection...");
-    await mongoose.connection.close(true);
-    connectWithRetry();
-  }
-}, 30000);
-
-process.on("SIGINT", async () => {
-  await mongoose.connection.close();
-  console.log("MongoDB connection closed through app termination");
-  process.exit(0);
-});
-
+export const dbConnection = DatabaseConnection.getInstance();
+export const connectMongoose = () => dbConnection.connect();
 export default mongoose.connection;
