@@ -1,25 +1,25 @@
 welcome_end =
-    <i>Support bot created by @LySupportBot</i>
+    <i>This support bot is powered by @LySupportBot</i>
 
 welcome_message =
-    Hey! Write your message and we will try to answer as soon as possible
+    👋 Hello! Please write your message and we'll get back to you as soon as possible.
 
 need_more_details =
-    <b>Your message was not sent</b>
+    <b>❗️ Your message was not sent</b>
 
-    Please, send more details about your problem or question for a quick solution.
+    To help you better, please provide more details about your problem or question.
 
 not_enough_rights =
-    The bot does not have enough rights to work.
-    Please give him administrator rights with the ability to manage topics.
+    ⚠️ The bot doesn't have sufficient permissions to operate.
+    Please grant it administrator rights with the ability to manage discussion topics.
 
 chat_not_forum =
-    This chat is not a forum. Please enable topics in the chat settings.
+    ℹ️ This chat isn't set up as a forum. Please enable discussion topics in the chat settings.
 
 setup_success =
-    The bot has been successfully configured!
+    ✅ Great! The bot has been successfully configured!
 
-    Users can now write messages to the bot.
+    Users can now send their messages.
 
 not_allowed = 
     You are not allowed to use this сommand.
@@ -35,9 +35,9 @@ no_blocks =
     The bot does not have any blocks.
     You can create blocks using the button below.
 
-block_add_button = ➕ Add block
-block_edit_data_button = 📝 Edit content
-block_edit_name_button = ✏️ Edit name
+block_add_button = ➕ Create new block
+block_edit_data_button = 📝 Modify content
+block_edit_name_button = ✏️ Change name
 block_delete_button = ❌ Delete
 
 send_block_name = 
@@ -77,7 +77,12 @@ unknown_command =
     The message was not sent.
 
 error = 
-    <b>An unknown error has occurred, please try again.</b>
+    <b>😔 An unexpected error occurred. Please try again.</b>
 
-    If the problem persists, then write to @Ly_oBot.
-    Please write immediately about which bot you are talking about and describe the problem in detail in one message.
+    If the problem persists, please contact @Ly_oBot.
+    Please specify which bot you're referring to and provide a detailed description of the issue in a single message.
+
+editing_disabled = 
+    <b>ℹ️ Message editing is disabled</b>
+    
+    Instead of editing the existing message, please send a new one.

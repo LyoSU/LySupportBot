@@ -466,6 +466,12 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
 }
 
 async function editMessage(ctx: MyContext) {
+  if (ctx.session.bot?.settings?.disable_message_editing) {
+    return ctx.reply(ctx.t("editing_disabled"), {
+      reply_to_message_id: ctx.editedMessage.message_id,
+    });
+  }
+
   const find = {
     from: {
       chat_id: ctx.editedMessage.chat.id,
