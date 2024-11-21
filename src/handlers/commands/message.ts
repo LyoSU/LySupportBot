@@ -269,6 +269,8 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
   if (ctx.session.state.startParam) {
     if (ctx.session.state.startParam) {
       blockChain.push(`start ${ctx.session.state.startParam}`);
+
+      ctx.session.state.startParam = null;
     }
   }
 
