@@ -264,14 +264,16 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     return ctx.reply("You are banned");
   }
 
-  if ((ctx.session.state.blocksChain && ctx.session.state.blocksChain.length) || ctx.session.state.startParam) {
-    const blocks = ctx.session.state.blocksChain;
+  let blockChain = [];
 
-    let blockChain = [];
-
+  if (ctx.session.state.startParam) {
     if (ctx.session.state.startParam) {
       blockChain.push(`start ${ctx.session.state.startParam}`);
     }
+  }
+
+  if (ctx.session.state.blocksChain && ctx.session.state.blocksChain.length) {
+    const blocks = ctx.session.state.blocksChain;
 
     for (const id of blocks) {
       const block = await db.Blocks.findById(id);
@@ -280,7 +282,9 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
         blockChain.push(block.name);
       }
     }
+  }
 
+  if (blockChain.length > 0) {
     let messageText = ctx.t("blocked_chain", {
       chain: blockChain.join(" -> "),
     });
