@@ -9,14 +9,20 @@ async function startPrivate(
 ) {
   ctx.session.state.contactData = null;
 
+  // Get start parameter if exists
+  const startParam = ctx.match as string;
+  if (startParam) {
+    ctx.session.state.startParam = startParam;
+  }
+
   if (!ctx.session.bot.chat_id) {
     return ctx.reply(ctx.t("not_configured"));
   }
 
   await ctx.reply(
     ctx.session.bot.settings.welcome_message.default +
-      "\n\n" +
-      ctx.t("welcome_end"),
+    "\n\n" +
+    ctx.t("welcome_end"),
     {
       reply_markup: {
         remove_keyboard: true,

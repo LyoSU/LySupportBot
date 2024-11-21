@@ -264,10 +264,14 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     return ctx.reply("You are banned");
   }
 
-  if (ctx.session.state.blocksChain && ctx.session.state.blocksChain.length) {
+  if ((ctx.session.state.blocksChain && ctx.session.state.blocksChain.length) || ctx.session.state.startParam) {
     const blocks = ctx.session.state.blocksChain;
 
     let blockChain = [];
+
+    if (ctx.session.state.startParam) {
+      blockChain.push(`start ${ctx.session.state.startParam}`);
+    }
 
     for (const id of blocks) {
       const block = await db.Blocks.findById(id);
