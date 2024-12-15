@@ -351,6 +351,9 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
       message_thread_id: topic.thread_id,
       reply_to_message_id: replyTo,
       allow_sending_without_reply: true,
+      quote: ctx.message?.quote?.text,
+      quote_entities: ctx.message?.quote?.entities,
+      quote_position: ctx.message?.quote?.position,
     }
   ).catch((error) => {
     if (error.description.includes("thread not found")) {
@@ -523,6 +526,9 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat | Chat.Su
       reply_parameters: {
         message_id: replyTo,
         allow_sending_without_reply: true,
+        quote: ctx.message?.quote?.text,
+        quote_entities: ctx.message?.quote?.entities,
+        quote_position: ctx.message?.quote?.position,
       }
     })
     .catch(async (error) => {
