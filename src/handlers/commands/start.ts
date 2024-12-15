@@ -27,7 +27,9 @@ async function startPrivate(
       reply_markup: {
         remove_keyboard: true,
       },
-      disable_web_page_preview: true,
+      link_preview_options: {
+        is_disabled: true,
+      }
     }
   );
 

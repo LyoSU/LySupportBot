@@ -3,6 +3,7 @@ import { HydrateFlavor, HydrateApiFlavor } from "@grammyjs/hydrate";
 import { FluentContextFlavor } from "@grammyjs/fluent";
 import { type ConversationFlavor } from "@grammyjs/conversations";
 import mongoose from "mongoose";
+import { MessageReactionUpdated } from "@grammyjs/types";
 
 interface SessionData {
   user: any;
@@ -17,12 +18,17 @@ interface DatabaseFlavor {
   database: { [key: string]: mongoose.Model<any, any> };
 }
 
+interface ReactionContext {
+  reaction?: MessageReactionUpdated;
+}
+
 type MyContext = BaseContext &
   HydrateFlavor<BaseContext> &
   SessionFlavor<SessionData> &
   FluentContextFlavor &
   ConversationFlavor &
-  DatabaseFlavor;
+  DatabaseFlavor &
+  ReactionContext;
 type MyApi = HydrateApiFlavor<Api>;
 
 export { MyContext, MyApi, SessionData };

@@ -1,10 +1,11 @@
 import { Bot } from "grammy";
-import { Chat } from "@grammyjs/types";
+import { Chat, MessageReactionUpdated } from "@grammyjs/types";
 import { MyContext } from "../../types";
 import { isGroup, isPrivate } from "../../filters/";
 import db from "../../database/models";
 import { isDocument } from "@typegoose/typegoose";
 import { OpenAIApi, Configuration } from "openai";
+import { MessageEntity } from "grammy/types"; // Add any necessary imports
 
 const openaiConfiguration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
@@ -213,7 +214,9 @@ ${aiRating}
     `,
     {
       message_thread_id: telegramTopic.message_thread_id,
-      disable_web_page_preview: true,
+      link_preview_options: {
+        is_disabled: true,
+      },
       reply_markup: {
         inline_keyboard: [
           [
@@ -317,7 +320,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
 
   let sendMethod = "copyMessage";
 
-  if (ctx.message.forward_from) {
+  if (ctx.message.forward_origin) {
     sendMethod = "forwardMessage";
   }
 
@@ -394,7 +397,59 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
   });
 }
 
-async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
+async function anyPrivateReaction(ctx: MyContext) {
+  if (!ctx.messageReaction) return;
+
+  const message = await db.Messages.findOne({
+    to: {
+      chat_id: ctx.chat?.id,
+      message_id: ctx.messageReaction.message_id,
+    },
+  });
+
+  if (!message) {
+    console.log("Message not found for reaction");
+    return;
+  }
+
+  try {
+    await ctx.api.setMessageReaction(
+      message.from.chat_id,
+      message.from.message_id,
+      ctx.messageReaction.new_reaction
+    );
+  } catch (error) {
+    console.error("Failed to set reaction:", error);
+  }
+}
+
+async function anyGroupReaction(ctx: MyContext) {
+  if (!ctx.messageReaction) return;
+
+  const message = await db.Messages.findOne({
+    to: {
+      chat_id: ctx.chat?.id,
+      message_id: ctx.messageReaction.message_id,
+    },
+  });
+
+  if (!message) {
+    console.log("Message not found for reaction");
+    return;
+  }
+
+  try {
+    await ctx.api.setMessageReaction(
+      message.from.chat_id,
+      message.from.message_id,
+      ctx.messageReaction.new_reaction
+    );
+  } catch (error) {
+    console.error("Failed to set reaction:", error);
+  }
+}
+
+async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat | Chat.SupergroupChat }) {
   if (
     !ctx.message.is_topic_message ||
     !ctx.message.from ||
@@ -417,7 +472,7 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
     });
   }
 
-  let replyTo = null;
+  let replyTo = 0;
 
   if (ctx.message.reply_to_message) {
     const type = ctx.message.reply_to_message.from.is_bot ? "to" : "from";
@@ -438,8 +493,10 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat }) {
 
   const resultCopy = await ctx.api
     .copyMessage(topic.user.telegram_id, ctx.chat.id, ctx.message.message_id, {
-      reply_to_message_id: replyTo,
-      allow_sending_without_reply: true,
+      reply_parameters: {
+        message_id: replyTo,
+        allow_sending_without_reply: true,
+      }
     })
     .catch(async (error) => {
       if (error?.description?.includes("blocked")) {
@@ -559,7 +616,9 @@ async function setup(bot: Bot<MyContext>) {
   });
 
   bot.filter(isPrivate).on("message", anyPrivateMessage);
+  bot.filter(isPrivate).on("message_reaction", anyPrivateReaction);
   bot.filter(isGroup).on("message", anyGroupMessage);
+  bot.filter(isGroup).on("message_reaction", anyGroupReaction);
   bot.on("edited_message", editMessage);
 }
 

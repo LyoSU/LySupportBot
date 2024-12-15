@@ -10,6 +10,7 @@ const allowedUpdates: ReadonlyArray<Exclude<keyof Update, "update_id">> = [
   "my_chat_member",
   "chat_member",
   "edited_message",
+  "message_reaction"
 ];
 
 export default allowedUpdates;

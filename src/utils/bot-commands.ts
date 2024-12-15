@@ -1,5 +1,5 @@
 import { Bot } from "grammy";
-import { BotCommand } from "@grammyjs/types";
+import { BotCommand, LanguageCode } from "@grammyjs/types";
 import { MyContext } from "../types";
 import logger from "./logger";
 import { BotCommandScope } from "@grammyjs/hydrate/out/deps.node";
@@ -7,7 +7,7 @@ import { BotCommandScope } from "@grammyjs/hydrate/out/deps.node";
 type MyBotCommands = {
   ["commands"]: BotCommand[];
   ["scope"]: BotCommandScope;
-  ["language_code"]: string | null;
+  ["language_code"]: LanguageCode | undefined;
 };
 
 const DEFAULT_COMMANDS_PRIVATE: MyBotCommands = {
