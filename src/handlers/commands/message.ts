@@ -400,11 +400,22 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
 async function anyPrivateReaction(ctx: MyContext) {
   if (!ctx.messageReaction) return;
 
+  // Check both directions for the message
   const message = await db.Messages.findOne({
-    to: {
-      chat_id: ctx.chat?.id,
-      message_id: ctx.messageReaction.message_id,
-    },
+    $or: [
+      {
+        to: {
+          chat_id: ctx.chat?.id,
+          message_id: ctx.messageReaction.message_id,
+        },
+      },
+      {
+        from: {
+          chat_id: ctx.chat?.id,
+          message_id: ctx.messageReaction.message_id,
+        },
+      }
+    ]
   });
 
   if (!message) {
@@ -413,9 +424,12 @@ async function anyPrivateReaction(ctx: MyContext) {
   }
 
   try {
+    const isMessageFromBot = message.to.chat_id === ctx.chat?.id;
+    const targetChat = isMessageFromBot ? message.from : message.to;
+
     await ctx.api.setMessageReaction(
-      message.from.chat_id,
-      message.from.message_id,
+      targetChat.chat_id,
+      targetChat.message_id,
       ctx.messageReaction.new_reaction
     );
   } catch (error) {
@@ -427,10 +441,20 @@ async function anyGroupReaction(ctx: MyContext) {
   if (!ctx.messageReaction) return;
 
   const message = await db.Messages.findOne({
-    to: {
-      chat_id: ctx.chat?.id,
-      message_id: ctx.messageReaction.message_id,
-    },
+    $or: [
+      {
+        to: {
+          chat_id: ctx.chat?.id,
+          message_id: ctx.messageReaction.message_id,
+        },
+      },
+      {
+        from: {
+          chat_id: ctx.chat?.id,
+          message_id: ctx.messageReaction.message_id,
+        },
+      }
+    ]
   });
 
   if (!message) {
@@ -439,9 +463,12 @@ async function anyGroupReaction(ctx: MyContext) {
   }
 
   try {
+    const isMessageFromBot = message.to.chat_id === ctx.chat?.id;
+    const targetChat = isMessageFromBot ? message.from : message.to;
+
     await ctx.api.setMessageReaction(
-      message.from.chat_id,
-      message.from.message_id,
+      targetChat.chat_id,
+      targetChat.message_id,
       ctx.messageReaction.new_reaction
     );
   } catch (error) {
