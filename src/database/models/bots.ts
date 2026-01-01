@@ -25,6 +25,9 @@ export class Bot {
 
   @prop()
   public settings?: any;
+
+  @prop()
+  public last_activity_at?: Date;
 }
 
 export const Bots = getModelForClass(Bot, {

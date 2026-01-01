@@ -12,6 +12,7 @@ export const botUpdateMiddleware = async (
     telegram_id: me.id,
     name: me.first_name,
     username: me.username,
+    last_activity_at: new Date(),
   };
   try {
     const bot = await Bots.findOneAndUpdate(
@@ -26,10 +27,5 @@ export const botUpdateMiddleware = async (
     ctx.session.bot = null;
   }
 
-  return next().then(() => {
-    if (ctx.session.bot) {
-      ctx.session.bot.last_activity_at = new Date();
-      return ctx.session.bot.save();
-    }
-  });
+  return next();
 };

@@ -35,10 +35,5 @@ export const userUpdateMiddleware = async (
     ctx.session.user = null;
   }
 
-  return next().then(() => {
-    if (ctx.session.user) {
-      ctx.session.user.last_activity_at = new Date();
-      return ctx.session.user.save();
-    }
-  });
+  return next();
 };
