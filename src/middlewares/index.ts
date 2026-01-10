@@ -47,6 +47,10 @@ async function setup(bot: Bot<MyContext>) {
     bot.use(botUpdateMiddleware);
     bot.use(userUpdateMiddleware);
     bot.use((ctx, next) => {
+      // Skip for updates without from (no session available)
+      if (!ctx.from) {
+        return next();
+      }
       ctx.session.conversation = ctx.session.conversation || {};
       return next();
     });
