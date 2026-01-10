@@ -31,11 +31,6 @@ const app = express();
 // This ensures req.ip is set correctly from X-Forwarded-For
 app.set("trust proxy", 1);
 
-app.use((req, res, next) => {
-  logger.info("Request received:", req.method, req.url);
-  next();
-});
-
 // Middleware
 app.use(onlyTelegram);
 app.use(express.json());
@@ -82,19 +77,14 @@ async function handleBotRequest(
   // Fallback authentication: query token (deprecated, for backward compatibility during migration)
   const queryToken = req.query.token as string | undefined;
 
-  // Debug logging
-  logger.info(`Auth attempt - secretToken: ${secretToken ? secretToken.substring(0, 8) + '...' : 'undefined'}, queryToken: ${queryToken ? 'present' : 'undefined'}`);
-
   let bot;
 
   if (secretToken) {
     // Secure authentication via webhook secret header
     bot = await db.Bots.findOne({ webhookSecret: secretToken });
 
-    logger.info(`Bot lookup by webhookSecret: ${bot ? `found (id: ${bot.telegram_id})` : 'NOT FOUND'}`);
-
     if (!bot) {
-      logger.warn(`Invalid webhook secret token received: ${secretToken.substring(0, 8)}...`);
+      logger.warn("Invalid webhook secret token received");
       res.status(401).send("Unauthorized");
       return;
     }
@@ -128,11 +118,9 @@ async function handleBotRequest(
     return;
   }
 
-  logger.info(`Creating gramBot for ${bot.telegram_id}`);
   const gramBot = new Bot<MyContext, MyApi>(bot.token);
 
   try {
-    logger.info(`Running setup for ${bot.telegram_id}`);
     await setup(gramBot);
 
     if (!gramBot.botInfo) {
@@ -141,11 +129,7 @@ async function handleBotRequest(
       return;
     }
 
-    logger.info(`Calling handleUpdate for ${bot.telegram_id}, body: ${JSON.stringify(req.body)?.substring(0, 200)}`);
-
     await gramBot.handleUpdate(req.body);
-
-    logger.info(`handleUpdate completed for ${bot.telegram_id}`);
     res.status(200).send("ok");
   } catch (error) {
     logger.error(`Error handling request for bot ${bot.telegram_id}:`, error);
