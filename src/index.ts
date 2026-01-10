@@ -142,8 +142,9 @@ async function handleBotRequest(
       return;
     }
 
-    logger.info(`Calling webhookCallback for ${bot.telegram_id}`);
+    logger.info(`Calling webhookCallback for ${bot.telegram_id}, body: ${JSON.stringify(req.body)?.substring(0, 200)}`);
     await webhookCallback(gramBot, "express")(req, res);
+    logger.info(`webhookCallback completed for ${bot.telegram_id}`);
   } catch (error) {
     logger.error(`Error handling request for bot ${bot.telegram_id}:`, error);
     await errorHandler(error as BotError<MyContext>, res);
