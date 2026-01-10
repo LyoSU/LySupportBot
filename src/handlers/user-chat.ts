@@ -10,6 +10,7 @@ async function userChat(ctx: MyContext & { chat: Chat.PrivateChat }) {
     return;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const topic = (await db.Topics.findOne({
     bot: ctx.session.bot,
     user: ctx.session.user,

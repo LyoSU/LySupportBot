@@ -8,6 +8,7 @@ async function loggingApiCalls(
   method: Methods<RawApi>,
   payload: Payload<Methods<RawApi>, RawApi>,
   signal?: AbortSignal,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<ApiResponse<any>> {
   logger.debug(`Called ${method} with payload ${JSON.stringify(payload)}`);
   return prev(method, payload, signal);

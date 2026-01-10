@@ -445,6 +445,7 @@ async function editBlockData(conversation: MyConversation, ctx: MyContext) {
 
   await ctx.reply(ctx.t("send_block_message"));
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let messageCtx = null as any;
 
   let type:

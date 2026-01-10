@@ -36,6 +36,7 @@ async function banUser(ctx: MyContext) {
     return ctx.reply("You must be an admin of the support group to ban users");
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let topic: any;
 
   if (ctx.match) {

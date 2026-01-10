@@ -3,6 +3,7 @@ import { MyContext } from "../../types";
 import { isPrivate } from "../../filters/";
 import db from "../../database/models";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sendBlock(ctx: MyContext, block: any) {
   ctx.session.state.blocksChain ??= [];
   ctx.session.state.blocksChain.push(block._id);
@@ -116,6 +117,7 @@ async function backBlock(ctx: MyContext) {
 
   ctx.session.state.contactData = null;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx.session.state.lastBlock = block._id as any;
 
   return sendBlock(ctx, block);
