@@ -4,7 +4,7 @@ import { User } from "./users";
 
 class BlockKeyboard {
   @prop({ required: true })
-  public name: string;
+  public name!: string;
 
   @prop()
   public url?: string;
@@ -15,39 +15,39 @@ class BlockKeyboard {
 
 class BlockMessage {
   @prop({ required: true })
-  public type: string;
+  public type!: string;
 
   @prop({ required: true })
-  public data: any;
+  public data!: unknown;
 
   @prop()
-  public preview: string;
+  public preview?: string;
 
   @prop()
-  public keyboard_type: string;
+  public keyboard_type?: string;
 
   @prop()
-  public keyboard: BlockKeyboard[][];
+  public keyboard?: BlockKeyboard[][];
 }
 
 export class Block {
   @prop({ ref: () => Bot, required: true, index: true })
-  public bot: Ref<Bot>;
+  public bot!: Ref<Bot>;
 
   @prop({ ref: () => User, required: true, index: true })
-  public creator: Ref<User>;
+  public creator!: Ref<User>;
 
   @prop({ required: true, index: true })
-  public name: string;
+  public name!: string;
 
   @prop({ index: true })
   public link?: string;
 
   @prop({ required: true })
-  public message: BlockMessage;
+  public message!: BlockMessage;
 
   @prop({ ref: () => Block, index: true })
-  public blocks: Ref<Block>[];
+  public blocks?: Ref<Block>[];
 }
 
 export const Blocks = getModelForClass(Block, {

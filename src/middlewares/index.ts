@@ -11,22 +11,21 @@ import { i18n } from "./i18n";
 import { userUpdateMiddleware } from "./user-update";
 import { botUpdateMiddleware } from "./bot-update";
 
-interface ExtendedSessionData extends SessionData {
-  conversationsMap: Map<string, any>;
-}
-
 async function setup(bot: Bot<MyContext>) {
   bot.use(loggingUpdates);
   bot.use(hydrateContext());
 
-  function initial(): ExtendedSessionData {
+  function initial(): SessionData {
     return {
-      user: undefined,
-      bot: undefined,
-      state: {},
-      data: {},
+      user: null,
+      bot: null,
+      state: {
+        contactData: null,
+        startParam: null,
+        blocksChain: [],
+        lastBlock: null,
+      },
       conversation: {},
-      conversationsMap: new Map(),
     };
   }
 
@@ -37,9 +36,10 @@ async function setup(bot: Bot<MyContext>) {
     bot.use(
       session({
         initial,
-        storage: new MongoDBAdapter<ExtendedSessionData>({ collection: sessions }),
-        getSessionKey(ctx: MyContext): string | undefined {
-          return `${ctx.me.id}:${ctx.from?.id}`;
+        storage: new MongoDBAdapter<SessionData>({ collection: sessions }),
+        getSessionKey(ctx): string | undefined {
+          if (!ctx.from?.id) return undefined;
+          return `${ctx.me.id}:${ctx.from.id}`;
         },
       })
     );

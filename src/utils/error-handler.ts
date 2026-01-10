@@ -1,8 +1,9 @@
 import { BotError, GrammyError, HttpError, Bot, Composer } from "grammy";
+import { Response } from "express";
 import { MyContext } from "../types";
 import { logger } from ".";
 
-async function errorHandler(err: BotError<MyContext>, res: any) {
+async function errorHandler(err: BotError<MyContext>, res: Response) {
   const ctx: MyContext = err.ctx;
   // const timeout: number = Date.now() - ctx["_start"];
   // logger.error(
@@ -20,7 +21,13 @@ async function errorHandler(err: BotError<MyContext>, res: any) {
   } else {
     console.error(e);
 
-    logger.error(`Unknown error: ${e}, update: ${JSON.stringify(ctx?.update)}`);
+    const safeUpdateInfo = ctx?.update ? {
+      update_id: ctx.update.update_id,
+      type: Object.keys(ctx.update).filter(k => k !== 'update_id')[0],
+      chat_id: ctx.chat?.id,
+      from_id: ctx.from?.id,
+    } : null;
+    logger.error(`Unknown error: ${e}, update: ${JSON.stringify(safeUpdateInfo)}`);
   }
 
   try {

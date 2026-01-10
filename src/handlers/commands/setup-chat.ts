@@ -6,6 +6,10 @@ import { isGroup } from "../../filters";
 async function setupChat(
   ctx: MyContext & { chat: Chat.SupergroupChat | Chat.GroupChat }
 ) {
+  if (!ctx.session.bot || !ctx.session.user) {
+    return;
+  }
+
   if (ctx.session.bot.owner.toString() !== ctx.session.user.id.toString()) {
     return ctx.reply(ctx.t("not_allowed"));
   }
@@ -18,7 +22,11 @@ async function setupChat(
 
   const chatMember = await ctx.getChatMember(ctx.me.id);
 
-  if (chatMember["can_manage_topics"] !== true) {
+  if (
+    chatMember.status !== "administrator" ||
+    !("can_manage_topics" in chatMember) ||
+    chatMember.can_manage_topics !== true
+  ) {
     return ctx.reply(ctx.t("not_enough_rights"));
   }
 

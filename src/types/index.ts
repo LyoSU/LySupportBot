@@ -4,18 +4,27 @@ import { FluentContextFlavor } from "@grammyjs/fluent";
 import { type ConversationFlavor } from "@grammyjs/conversations";
 import mongoose from "mongoose";
 import { MessageReactionUpdated } from "@grammyjs/types";
+import { DocumentType } from "@typegoose/typegoose";
+import { User } from "../database/models/users";
+import { Bot, BotSettings } from "../database/models/bots";
+
+// Session state interface based on usage in handlers
+interface SessionState {
+  contactData: Date | null;
+  startParam: string | null;
+  blocksChain: string[];
+  lastBlock: string | null;
+}
 
 interface SessionData {
-  user: any;
-  bot: any;
-  state: { [key: string]: any };
-  data: any;
-  conversation: { [key: string]: any } | {};
-  conversationsMap: Map<string, any>;
+  user: DocumentType<User> | null;
+  bot: DocumentType<Bot> | null;
+  state: SessionState;
+  conversation: Record<string, unknown>;
 }
 
 interface DatabaseFlavor {
-  database: { [key: string]: mongoose.Model<any, any> };
+  database: Record<string, mongoose.Model<unknown>>;
 }
 
 interface ReactionContext {
@@ -26,9 +35,10 @@ type MyContext = BaseContext &
   HydrateFlavor<BaseContext> &
   SessionFlavor<SessionData> &
   FluentContextFlavor &
-  ConversationFlavor &
+  ConversationFlavor<BaseContext> &
   DatabaseFlavor &
   ReactionContext;
+
 type MyApi = HydrateApiFlavor<Api>;
 
-export { MyContext, MyApi, SessionData };
+export { MyContext, MyApi, SessionData, SessionState, BotSettings };

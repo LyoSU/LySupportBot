@@ -6,7 +6,6 @@ async function logging(ctx: MyContext, next: NextFunction) {
   logger.debug(`Received update [ID:${ctx.update.update_id}]`)
 
   const _start = Date.now() // milliseconds
-  ctx["_start"] = _start
 
   if (!!ctx?.message) {
     if (!!ctx.message.migrate_to_chat_id) {
@@ -32,41 +31,41 @@ async function logging(ctx: MyContext, next: NextFunction) {
 
 async function onMessage(ctx: MyContext) {
   logger.debug(
-    `Received message [ID:${ctx.message.message_id}] in chat [${ctx.chat.type}:${ctx.chat.id}]
-from user [ID:${ctx.from.id}]`
+    `Received message [ID:${ctx.message?.message_id}] in chat [${ctx.chat?.type}:${ctx.chat?.id}]
+from user [ID:${ctx.from?.id}]`
   )
 }
 
 async function onCallbackQuery(ctx: MyContext) {
   logger.debug(
-    `Received callback query [ID:${ctx.callbackQuery.id}]
-from user [ID:${ctx.from.id}]
-for message [ID:${ctx.callbackQuery.message.message_id}]
-in chat [${ctx.chat.type}:${ctx.chat.id}]
-with data: ${ctx.callbackQuery.data})`
+    `Received callback query [ID:${ctx.callbackQuery?.id}]
+from user [ID:${ctx.from?.id}]
+for message [ID:${ctx.callbackQuery?.message?.message_id}]
+in chat [${ctx.chat?.type}:${ctx.chat?.id}]
+with data: ${ctx.callbackQuery?.data})`
   )
 }
 
 async function onInlineQuery(ctx: MyContext) {
   logger.debug(
-    `Received inline query [ID:${ctx.inlineQuery.id}]
-from user [ID:${ctx.from.id}]`
+    `Received inline query [ID:${ctx.inlineQuery?.id}]
+from user [ID:${ctx.from?.id}]`
   )
 }
 
 async function onChosenInlineQuery(ctx: MyContext) {
   logger.debug(
-    `Received chosen inline result [Inline msg ID:${ctx.chosenInlineResult.inline_message_id}]
-from user [ID:${ctx.from.id}]
-result [ID:${ctx.chosenInlineResult.result_id}]`
+    `Received chosen inline result [Inline msg ID:${ctx.chosenInlineResult?.inline_message_id}]
+from user [ID:${ctx.from?.id}]
+result [ID:${ctx.chosenInlineResult?.result_id}]`
   )
 }
 
 async function onChatMigration(ctx: MyContext) {
   logger.debug(
     `Recieved chat migration update
-old chat id: ${ctx.chat.id}
-new chat id: ${ctx.message.migrate_to_chat_id}`
+old chat id: ${ctx.chat?.id}
+new chat id: ${ctx.message?.migrate_to_chat_id}`
   )
 }
 

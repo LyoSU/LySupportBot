@@ -18,7 +18,7 @@ const DEFAULT_COMMANDS_PRIVATE: MyBotCommands = {
     },
   ],
   scope: { type: "all_private_chats" },
-  language_code: null,
+  language_code: undefined,
 };
 
 const DEFAULT_COMMANDS_GROUP: MyBotCommands = {
@@ -29,7 +29,7 @@ const DEFAULT_COMMANDS_GROUP: MyBotCommands = {
     },
   ],
   scope: { type: "all_group_chats" },
-  language_code: null,
+  language_code: undefined,
 };
 
 async function setup(bot: Bot<MyContext>) {

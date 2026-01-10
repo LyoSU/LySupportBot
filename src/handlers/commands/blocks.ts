@@ -3,7 +3,7 @@ import { MyContext } from "../../types";
 import { isPrivate } from "../../filters/";
 import db from "../../database/models";
 
-async function sendBlock(ctx: MyContext, block) {
+async function sendBlock(ctx: MyContext, block: any) {
   ctx.session.state.blocksChain ??= [];
   ctx.session.state.blocksChain.push(block._id);
 
@@ -36,20 +36,20 @@ async function sendBlock(ctx: MyContext, block) {
 
   if (block.message.type === "text") {
     await ctx.reply(block.message.data.text, {
-      parse_mode: null,
+      parse_mode: undefined,
       entities: block.message.data.entities,
       reply_markup: replyMarkup ? replyMarkup : { remove_keyboard: true },
     });
   } else if (block.message.type === "photo") {
     await ctx.replyWithPhoto(block.message.data.media, {
-      parse_mode: null,
+      parse_mode: undefined,
       caption: block.message.data.caption,
       caption_entities: block.message.data.caption_entities,
       reply_markup: replyMarkup ? replyMarkup : { remove_keyboard: true },
     });
   } else {
     await ctx.replyWithDocument(block.message.data.media, {
-      parse_mode: null,
+      parse_mode: undefined,
       caption: block.message.data.caption,
       caption_entities: block.message.data.caption_entities,
       reply_markup: replyMarkup ? replyMarkup : { remove_keyboard: true },
@@ -70,9 +70,9 @@ async function conversationBlock(ctx: MyContext, next: NextFunction) {
     const lastBlock = await db.Blocks.findById(ctx.session.state.lastBlock);
 
     if (lastBlock) {
-      for (const row of lastBlock.message.keyboard) {
+      for (const row of lastBlock.message.keyboard ?? []) {
         for (const button of row) {
-          if (button.name === ctx.message.text) {
+          if (button.name === ctx.message?.text) {
             block = await db.Blocks.findById(button.block);
           }
         }
@@ -108,7 +108,7 @@ async function contactButton(ctx: MyContext) {
 async function backBlock(ctx: MyContext) {
   const bot = await db.Bots.findOne({ telegram_id: ctx.me.id });
 
-  const block = await db.Blocks.findById(bot.settings.mainBlock);
+  const block = await db.Blocks.findById(bot?.settings?.mainBlock);
 
   if (!block) {
     return;
@@ -116,7 +116,7 @@ async function backBlock(ctx: MyContext) {
 
   ctx.session.state.contactData = null;
 
-  ctx.session.state.lastBlock = block._id;
+  ctx.session.state.lastBlock = block._id as any;
 
   return sendBlock(ctx, block);
 }

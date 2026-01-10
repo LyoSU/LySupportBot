@@ -5,6 +5,10 @@ import { isPrivate } from "../filters/";
 import db from "../database/models";
 
 async function userChat(ctx: MyContext & { chat: Chat.PrivateChat }) {
+  if (!ctx.session.bot || !ctx.session.user) {
+    return;
+  }
+
   const topic = (await db.Topics.findOne({
     bot: ctx.session.bot,
     user: ctx.session.user,
@@ -17,7 +21,7 @@ async function userChat(ctx: MyContext & { chat: Chat.PrivateChat }) {
   const forumTopicIconStickers = await ctx.api.getForumTopicIconStickers();
 
   const emoji =
-    ctx.myChatMember.new_chat_member?.status === "member" ? "" : "☕️";
+    ctx.myChatMember?.new_chat_member?.status === "member" ? "" : "☕️";
 
   const stickerEmoji = forumTopicIconStickers.find((sticker) => {
     return sticker.emoji === emoji;

@@ -1,18 +1,42 @@
 import { Bot } from "grammy";
 import { MyContext } from "../../types";
 import db from "../../database/models";
+import { escapeHtml } from "../../utils";
 
-function escapeHtml(s: string) {
-  s = s.replace(/&/g, "&amp;");
-  s = s.replace(/</g, "&lt;");
-  s = s.replace(/>/g, "&gt;");
-  s = s.replace(/"/g, "&quot;");
-  s = s.replace(/\'/g, "&#x27;");
-  return s;
+/**
+ * Checks if the current user is an admin or creator of the chat where the action is being performed.
+ * Also verifies the action is happening in the correct admin group (ctx.session.bot.chat_id).
+ */
+async function isGroupAdmin(ctx: MyContext): Promise<boolean> {
+  if (!ctx.from || !ctx.chat || !ctx.session.bot) return false;
+
+  // Verify the callback/command is coming from the correct admin group
+  if (ctx.chat.id !== ctx.session.bot.chat_id) {
+    return false;
+  }
+
+  try {
+    const member = await ctx.getChatMember(ctx.from.id);
+    return ['creator', 'administrator'].includes(member.status);
+  } catch {
+    return false;
+  }
 }
 
 async function banUser(ctx: MyContext) {
-  let topic
+  if (!ctx.session.bot || !ctx.from) {
+    return;
+  }
+
+  // Authorization check: verify user is an admin of the support group
+  if (!await isGroupAdmin(ctx)) {
+    if (ctx.callbackQuery) {
+      return ctx.answerCallbackQuery("You must be an admin to ban users");
+    }
+    return ctx.reply("You must be an admin of the support group to ban users");
+  }
+
+  let topic: any;
 
   if (ctx.match) {
     const user = await db.Users.findOne({ telegram_id: ctx.match[1] });
@@ -28,7 +52,7 @@ async function banUser(ctx: MyContext) {
   } else if (ctx.message) {
     topic = await db.Topics.findOne({
       bot: ctx.session.bot,
-      thread_id: ctx.message.message_thread_id,
+      thread_id: ctx.message?.message_thread_id,
     }).populate("user");
   }
 
@@ -49,7 +73,7 @@ async function banUser(ctx: MyContext) {
           [
             {
               text: "🔓 Unban",
-              callback_data: `unban:${ctx.match[1]}`,
+              callback_data: `unban:${ctx.match![1]}`,
             },
           ],
         ],
@@ -79,6 +103,18 @@ async function banUser(ctx: MyContext) {
 }
 
 async function unbanUser(ctx: MyContext) {
+  if (!ctx.session.bot || !ctx.from || !ctx.match) {
+    return;
+  }
+
+  // Authorization check: verify user is an admin of the support group
+  if (!await isGroupAdmin(ctx)) {
+    if (ctx.callbackQuery) {
+      return ctx.answerCallbackQuery("You must be an admin to unban users");
+    }
+    return ctx.reply("You must be an admin of the support group to unban users");
+  }
+
   const user = await db.Users.findOne({ telegram_id: ctx.match[1] });
 
   if (!user) {
@@ -126,8 +162,19 @@ async function unbanUser(ctx: MyContext) {
 async function setup(bot: Bot<MyContext>) {
   bot.callbackQuery(/^ban:(\d+)/, banUser);
   bot.callbackQuery(/^unban:(\d+)/, unbanUser);
-  bot.command("ban", banUser);
-  bot.command("unban", unbanUser);
+  // Filter commands to only work in the admin group (ctx.session.bot.chat_id)
+  bot.command("ban", (ctx, next) => {
+    if (ctx.session.bot && ctx.chat?.id === ctx.session.bot.chat_id) {
+      return banUser(ctx);
+    }
+    return next();
+  });
+  bot.command("unban", (ctx, next) => {
+    if (ctx.session.bot && ctx.chat?.id === ctx.session.bot.chat_id) {
+      return unbanUser(ctx);
+    }
+    return next();
+  });
 }
 
 export default { setup };

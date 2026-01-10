@@ -7,10 +7,14 @@ async function startPrivate(
   ctx: MyContext & { chat: Chat.PrivateChat },
   next: NextFunction
 ) {
+  if (!ctx.session.bot) {
+    return;
+  }
+
   ctx.session.state.contactData = null;
 
   // Get start parameter if exists
-  const startParam = ctx.match as string;
+  const startParam = ctx.match as string | undefined;
   if (startParam) {
     ctx.session.state.startParam = startParam;
   }
@@ -20,7 +24,7 @@ async function startPrivate(
   }
 
   await ctx.reply(
-    ctx.session.bot.settings.welcome_message.default +
+    (ctx.session.bot.settings?.welcome_message?.default ?? "") +
     "\n\n" +
     ctx.t("welcome_end"),
     {

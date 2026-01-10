@@ -4,13 +4,13 @@ import { MyContext } from "../../types";
 import { isGroup, isPrivate } from "../../filters/";
 import db from "../../database/models";
 import { isDocument } from "@typegoose/typegoose";
-import { OpenAIApi, Configuration } from "openai";
+import OpenAI from "openai";
 import { MessageEntity } from "grammy/types"; // Add any necessary imports
+import { escapeHtml } from "../../utils";
 
-const openaiConfiguration = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(openaiConfiguration);
 
 async function importanceRatingAI(
   text: string,
@@ -30,9 +30,9 @@ async function importanceRatingAI(
     };
   }
 
-  const aiResponse = await openai
-    .createChatCompletion({
-      model: "gpt-4.1",
+  const aiResponse = await openai.chat.completions
+    .create({
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
@@ -60,22 +60,21 @@ Send the result in a valid JSON format, making sure to escape characters if nece
       temperature: 0.0,
     })
     .catch((err) => {
-      console.error("OpenAI error:", err?.response?.statusText || err.message);
-      return err;
+      console.error("OpenAI error:", err.message);
+      return null;
     });
 
   // retry if failed
   if (
     !aiResponse ||
-    !aiResponse.data ||
-    !aiResponse.data.choices ||
-    !aiResponse.data.choices[0]
+    !aiResponse.choices ||
+    !aiResponse.choices[0]
   ) {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     return importanceRatingAI(text, retries + 1);
   }
 
-  const aiResponseText = aiResponse.data.choices[0].message.content;
+  const aiResponseText = aiResponse.choices[0].message?.content;
 
   if (!aiResponseText) {
     return importanceRatingAI(text, retries + 1);
@@ -102,20 +101,17 @@ Send the result in a valid JSON format, making sure to escape characters if nece
   return aiResponseJson;
 }
 
-function escapeHtml(s: string) {
-  s = s.replace(/&/g, "&amp;");
-  s = s.replace(/</g, "&lt;");
-  s = s.replace(/>/g, "&gt;");
-  s = s.replace(/"/g, "&quot;");
-  s = s.replace(/\'/g, "&#x27;");
-  return s;
-}
-
 const topicIconColors = [
   7322096, 16766590, 13338331, 9367192, 16749490, 16478047,
 ] as const;
 
+const MAX_MESSAGE_LENGTH = 4000;
+
 async function createTopic(ctx: MyContext) {
+  if (!ctx.session.bot || !ctx.session.user || !ctx.from) {
+    return;
+  }
+
   const chatId = ctx.session.bot?.chat_id;
 
   let name = ctx.from.last_name
@@ -129,10 +125,15 @@ async function createTopic(ctx: MyContext) {
 
   let aiRating = "" as string;
 
-  const text = ctx?.message?.text || ctx?.message?.caption || "[no text]";
+  let text = ctx?.message?.text || ctx?.message?.caption || "[no text]";
+
+  // Truncate text to prevent excessively long inputs to OpenAI
+  if (text.length > MAX_MESSAGE_LENGTH) {
+    text = text.substring(0, MAX_MESSAGE_LENGTH);
+  }
 
   if (
-    ctx.session.bot.settings.minWords &&
+    ctx.session.bot.settings?.minWords &&
     ctx.session.bot.settings.minWords > 0 &&
     text.split(" ").length < ctx.session.bot.settings.minWords
   ) {
@@ -141,7 +142,7 @@ async function createTopic(ctx: MyContext) {
     return;
   }
 
-  if (ctx.session.bot.settings.ai) {
+  if (ctx.session.bot.settings?.ai) {
     // if 3 or less words, don't use AI
     if (text.split(" ").length <= 3) {
       await ctx.reply(ctx.t("need_more_details"));
@@ -154,9 +155,9 @@ async function createTopic(ctx: MyContext) {
     });
 
     if (aiResponse.error) {
-      aiRating = `\n<b>🤖 AI rating:</b> ${aiResponse.error}`;
+      aiRating = `\n<b>🤖 AI rating:</b> ${escapeHtml(aiResponse.error)}`;
     } else {
-      aiRating = `\n<b>🏷 AI Title:</b> ${aiResponse.title}\n<b>🤖 AI rating:</b> ${aiResponse.importance} (${aiResponse.category})`;
+      aiRating = `\n<b>🏷 AI Title:</b> ${escapeHtml(aiResponse.title)}\n<b>🤖 AI rating:</b> ${escapeHtml(aiResponse.importance)} (${escapeHtml(aiResponse.category)})`;
 
       topicTitle = aiResponse.title;
 
@@ -173,12 +174,12 @@ async function createTopic(ctx: MyContext) {
   }
 
   const telegramTopic = await ctx.api
-    .createForumTopic(chatId, topicTitle, {
+    .createForumTopic(chatId!, topicTitle, {
       icon_color: iconColor,
     })
     .catch((error) => {
       if (error.description.includes("not enough rights")) {
-        ctx.api.sendMessage(chatId, ctx.t("not_enough_rights")).catch(() => { });
+        ctx.api.sendMessage(chatId!, ctx.t("not_enough_rights")).catch(() => { });
       }
 
       throw new Error(error);
@@ -203,7 +204,7 @@ async function createTopic(ctx: MyContext) {
       : "";
 
   const mainMessage = await ctx.api.sendMessage(
-    chatId,
+    chatId!,
     `
 🧑 <code>${name}</code>${usernameText}<i></i>
 
@@ -230,20 +231,25 @@ ${aiRating}
     }
   );
 
-  await db.Topics.deleteMany({
-    bot: ctx.session.bot,
-    user: ctx.session.user,
-  });
+  const topic = await db.Topics.findOneAndUpdate(
+    { bot: ctx.session.bot._id, user: ctx.session.user._id },
+    {
+      $set: {
+        thread_id: telegramTopic.message_thread_id,
+        pin_message_id: mainMessage.message_id,
+      },
+    },
+    { upsert: true, new: true }
+  );
 
-  return db.Topics.create({
-    bot: ctx.session.bot,
-    thread_id: telegramTopic.message_thread_id,
-    user: ctx.session.user,
-    pin_message_id: mainMessage.message_id,
-  });
+  return topic;
 }
 
 async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
+  if (!ctx.session.bot || !ctx.session.user || !ctx.message) {
+    return;
+  }
+
   const chatId = ctx.session.bot?.chat_id;
 
   if (!chatId) {
@@ -256,7 +262,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
   });
 
   if (!topic) {
-    topic = await createTopic(ctx);
+    topic = await createTopic(ctx) ?? null;
 
     if (!topic) {
       return;
@@ -294,17 +300,22 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
       chain: blockChain.join(" -> "),
     });
 
-    if (ctx.session.bot.settings.ai) {
-      const aiResponse = await importanceRatingAI(
-        ctx?.message?.text || ctx?.message?.caption || "[no text]"
-      ).catch((err) => {
+    if (ctx.session.bot.settings?.ai) {
+      let aiInputText = ctx?.message?.text || ctx?.message?.caption || "[no text]";
+
+      // Truncate text to prevent excessively long inputs to OpenAI
+      if (aiInputText.length > MAX_MESSAGE_LENGTH) {
+        aiInputText = aiInputText.substring(0, MAX_MESSAGE_LENGTH);
+      }
+
+      const aiResponse = await importanceRatingAI(aiInputText).catch((err) => {
         return err;
       });
 
       if (aiResponse.error) {
-        messageText += `\n\n<b>🤖 AI rating:</b> ${aiResponse.error}`;
+        messageText += `\n\n<b>🤖 AI rating:</b> ${escapeHtml(aiResponse.error)}`;
       } else {
-        messageText += `\n\n<b>🤖 AI rating:</b> ${aiResponse.importance} (${aiResponse.category})`;
+        messageText += `\n\n<b>🤖 AI rating:</b> ${escapeHtml(aiResponse.importance)} (${escapeHtml(aiResponse.category)})`;
       }
     }
 
@@ -327,7 +338,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
   let replyTo = null;
 
   if (ctx.message.reply_to_message) {
-    const type = ctx.message.reply_to_message.from.is_bot ? "to" : "from";
+    const type = ctx.message.reply_to_message.from?.is_bot ? "to" : "from";
 
     const find = {
       [type]: {
@@ -343,19 +354,21 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     }
   }
 
-  let result = await ctx.api[sendMethod](
+  let result = await (ctx.api as any)[sendMethod](
     chatId,
     ctx.chat.id,
     ctx.message.message_id,
     {
       message_thread_id: topic.thread_id,
-      reply_to_message_id: replyTo,
-      allow_sending_without_reply: true,
-      quote: ctx.message?.quote?.text,
-      quote_entities: ctx.message?.quote?.entities,
-      quote_position: ctx.message?.quote?.position,
+      reply_parameters: {
+        message_id: replyTo,
+        allow_sending_without_reply: true,
+        quote: ctx.message?.quote?.text,
+        quote_entities: ctx.message?.quote?.entities,
+        quote_position: ctx.message?.quote?.position,
+      },
     }
-  ).catch((error) => {
+  ).catch((error: any) => {
     if (error.description.includes("thread not found")) {
       return {
         message_id: null,
@@ -366,13 +379,13 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
   });
 
   if (result?.message_id === null) {
-    topic = await createTopic(ctx);
+    topic = await createTopic(ctx) ?? null;
 
     if (!topic) {
       return;
     }
 
-    result = await ctx.api[sendMethod](
+    result = await (ctx.api as any)[sendMethod](
       chatId,
       ctx.chat.id,
       ctx.message.message_id,
@@ -480,6 +493,10 @@ async function anyGroupReaction(ctx: MyContext) {
 }
 
 async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat | Chat.SupergroupChat }) {
+  if (!ctx.session.bot || !ctx.message) {
+    return;
+  }
+
   if (
     !ctx.message.is_topic_message ||
     !ctx.message.from ||
@@ -505,7 +522,7 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat | Chat.Su
   let replyTo = 0;
 
   if (ctx.message.reply_to_message) {
-    const type = ctx.message.reply_to_message.from.is_bot ? "to" : "from";
+    const type = ctx.message.reply_to_message.from?.is_bot ? "to" : "from";
 
     const find = {
       [type]: {
@@ -535,7 +552,7 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat | Chat.Su
       if (error?.description?.includes("blocked")) {
         return ctx
           .reply("User blocked the bot", {
-            message_thread_id: ctx.message.message_thread_id,
+            message_thread_id: ctx.message?.message_thread_id,
           })
           .catch(() => { });
       } else if (error.description.includes("can't be copied")) {
@@ -566,6 +583,10 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat | Chat.Su
 }
 
 async function editMessage(ctx: MyContext) {
+  if (!ctx.editedMessage) {
+    return;
+  }
+
   if (ctx.session.bot?.settings?.disable_message_editing) {
     return ctx.reply(ctx.t("editing_disabled"), {
       reply_to_message_id: ctx.editedMessage.message_id,
@@ -593,7 +614,7 @@ async function editMessage(ctx: MyContext) {
         ctx.editedMessage.text,
         {
           entities: ctx.editedMessage.entities,
-          parse_mode: null,
+          parse_mode: undefined,
         }
       )
       .catch((error) => {
@@ -604,7 +625,7 @@ async function editMessage(ctx: MyContext) {
         throw new Error(error);
       });
   } else {
-    let type: "animation" | "document" | "audio" | "photo" | "video";
+    let type: "animation" | "document" | "audio" | "photo" | "video" | undefined = undefined;
 
     if (ctx.editedMessage.animation) {
       type = "animation";
@@ -616,7 +637,9 @@ async function editMessage(ctx: MyContext) {
       type = "photo";
     } else if (ctx.editedMessage.video) {
       type = "video";
-    } else {
+    }
+
+    if (!type) {
       return ctx.reply(
         "🚫 This message type cannot be edited yet, try sending it again",
         {
@@ -628,16 +651,16 @@ async function editMessage(ctx: MyContext) {
     let media: string;
 
     if (type === "photo") {
-      media = ctx.editedMessage.photo[0].file_id;
+      media = ctx.editedMessage.photo![0].file_id;
     } else {
-      media = ctx.editedMessage[type].file_id;
+      media = ctx.editedMessage[type]!.file_id;
     }
 
     await ctx.api.editMessageMedia(message.to.chat_id, message.to.message_id, {
       type,
       media,
       caption: ctx.editedMessage.caption,
-      parse_mode: null,
+      parse_mode: undefined,
       caption_entities: ctx.editedMessage.caption_entities,
     });
   }
