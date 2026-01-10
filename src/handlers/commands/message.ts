@@ -9,7 +9,7 @@ import { escapeHtml, logger } from "../../utils";
 
 type TelegramError = Error & { description?: string };
 
-import { MessageEntity, ReplyParameters } from "grammy/types";
+import { ReplyParameters } from "grammy/types";
 
 interface SendMessageOptions {
   api: Api;
