@@ -183,11 +183,21 @@ async function bootstrap() {
     await dbConnection.connect();
     logger.info("Connected to MongoDB");
 
-    // Apply rate limiting
-    app.use(limiter);
+    // Health check endpoint
+    app.get("/health", (_req, res) => {
+      res.status(200).send("ok");
+    });
 
-    // Handle bot requests
-    app.use(handleBotRequest);
+    // Apply rate limiting to webhook
+    app.use("/webhook", limiter);
+
+    // Handle bot webhook requests (POST only)
+    app.post("/webhook", handleBotRequest);
+
+    // Catch-all for other routes
+    app.use((_req, res) => {
+      res.status(404).send("Not Found");
+    });
 
     // Start server
     app.listen(port, async () => {
