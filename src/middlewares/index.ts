@@ -41,7 +41,7 @@ async function setup(bot: Bot<MyContext>) {
           if (!ctx.from?.id) return undefined;
           return `${ctx.me.id}:${ctx.from.id}`;
         },
-      })
+      }),
     );
 
     bot.use(botUpdateMiddleware);

@@ -8,7 +8,15 @@ import { MyContext, MyApi } from "./types";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { webhookCallback } from "grammy";
-import { allowedUpdates, logger, setup, errorHandler, onlyTelegram, getClientIp, generateWebhookSecret } from "./utils";
+import {
+  allowedUpdates,
+  logger,
+  setup,
+  errorHandler,
+  onlyTelegram,
+  getClientIp,
+  generateWebhookSecret,
+} from "./utils";
 import { dbConnection } from "./database/connection";
 import db from "./database/models";
 import { timingSafeEqual } from "crypto";
@@ -25,7 +33,7 @@ const app = express();
 app.set("trust proxy", 1);
 
 app.use((req, res, next) => {
-  console.log('Request received:', req.method, req.url);
+  logger.info("Request received:", req.method, req.url);
   next();
 });
 
@@ -65,10 +73,12 @@ function secureCompare(a: string, b: string): boolean {
 
 async function handleBotRequest(
   req: express.Request,
-  res: express.Response
+  res: express.Response,
 ): Promise<void> {
   // Primary authentication: X-Telegram-Bot-Api-Secret-Token header (secure method)
-  const secretToken = req.headers["x-telegram-bot-api-secret-token"] as string | undefined;
+  const secretToken = req.headers["x-telegram-bot-api-secret-token"] as
+    | string
+    | undefined;
 
   // Fallback authentication: query token (deprecated, for backward compatibility during migration)
   const queryToken = req.query.token as string | undefined;
@@ -94,7 +104,9 @@ async function handleBotRequest(
   } else if (queryToken) {
     // DEPRECATED: Fallback to query token for backward compatibility
     // This path should be removed once all bots are migrated to use webhook secrets
-    logger.warn("Bot using deprecated query token authentication - should migrate to webhook secret");
+    logger.warn(
+      "Bot using deprecated query token authentication - should migrate to webhook secret",
+    );
     bot = await db.Bots.findOne({ token: queryToken });
 
     if (!bot) {
@@ -127,7 +139,10 @@ async function handleBotRequest(
   }
 }
 
-async function setupWebhook(bot: Bot<MyContext, MyApi>, webhookSecret: string): Promise<void> {
+async function setupWebhook(
+  bot: Bot<MyContext, MyApi>,
+  webhookSecret: string,
+): Promise<void> {
   // Secure webhook URL - no longer includes token in query string
   // Cache busting timestamp ensures Telegram recognizes webhook changes
   const webhookUrl = `https://${domain}/webhook?_=${Date.now()}`;
@@ -140,7 +155,7 @@ async function setupWebhook(bot: Bot<MyContext, MyApi>, webhookSecret: string): 
     });
     logger.info(`Webhook set to ${webhookUrl} with secret token`);
   } catch (error) {
-    logger.error('Failed to set webhook:', error);
+    logger.error("Failed to set webhook:", error);
     process.exit(1);
   }
 }
@@ -148,7 +163,7 @@ async function setupWebhook(bot: Bot<MyContext, MyApi>, webhookSecret: string): 
 async function bootstrap() {
   try {
     await dbConnection.connect();
-    logger.info('Connected to MongoDB');
+    logger.info("Connected to MongoDB");
 
     // Apply rate limiting
     app.use(limiter);
@@ -179,7 +194,9 @@ async function bootstrap() {
           webhookSecret: webhookSecret,
           is_active: true,
         });
-        logger.info(`Created new bot record for ${botInfo.username} with webhook secret`);
+        logger.info(
+          `Created new bot record for ${botInfo.username} with webhook secret`,
+        );
       } else if (!botRecord.webhookSecret) {
         // Migrate existing bot to use webhook secret
         const webhookSecret = generateWebhookSecret();
@@ -191,7 +208,7 @@ async function bootstrap() {
               token: botToken, // Ensure token is stored
             },
           },
-          { new: true }
+          { new: true },
         );
         logger.info(`Migrated bot ${botInfo.username} to use webhook secret`);
       }
@@ -199,13 +216,13 @@ async function bootstrap() {
       await setupWebhook(mainBot, botRecord!.webhookSecret!);
     });
   } catch (error) {
-    logger.error('Failed to start server:', error);
+    logger.error("Failed to start server:", error);
     process.exit(1);
   }
 }
 
 // Start the application
 bootstrap().catch((error) => {
-  logger.error('Unhandled error during startup:', error);
+  logger.error("Unhandled error during startup:", error);
   process.exit(1);
 });

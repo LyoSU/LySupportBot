@@ -4,7 +4,7 @@ import { logger } from "../utils";
 class DatabaseConnection {
   private static instance: DatabaseConnection;
   private isConnecting: boolean = false;
-  
+
   private constructor() {}
 
   static getInstance(): DatabaseConnection {
@@ -40,7 +40,7 @@ class DatabaseConnection {
         retryWrites: true,
         heartbeatFrequencyMS: 10000,
         connectTimeoutMS: 30000,
-        family: 4
+        family: 4,
       });
 
       logger.info("Successfully connected to MongoDB");

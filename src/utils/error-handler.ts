@@ -1,4 +1,4 @@
-import { BotError, GrammyError, HttpError, Bot, Composer } from "grammy";
+import { BotError, GrammyError, HttpError } from "grammy";
 import { Response } from "express";
 import { MyContext } from "../types";
 import { logger } from ".";
@@ -9,7 +9,7 @@ async function errorHandler(err: BotError<MyContext>, res: Response) {
   // logger.error(
   //   `Process update [ID:${ctx.update.update_id}]: [failed] (in ${timeout}ms)`
   // );
-  console.error(err);
+  logger.error("Bot error:", err);
 
   const e = err.error;
   if (e instanceof BotError) {
@@ -19,15 +19,19 @@ async function errorHandler(err: BotError<MyContext>, res: Response) {
   } else if (e instanceof HttpError) {
     logger.error(`Could not contact Telegram: ${e}`);
   } else {
-    console.error(e);
+    logger.error("Unhandled error:", e);
 
-    const safeUpdateInfo = ctx?.update ? {
-      update_id: ctx.update.update_id,
-      type: Object.keys(ctx.update).filter(k => k !== 'update_id')[0],
-      chat_id: ctx.chat?.id,
-      from_id: ctx.from?.id,
-    } : null;
-    logger.error(`Unknown error: ${e}, update: ${JSON.stringify(safeUpdateInfo)}`);
+    const safeUpdateInfo = ctx?.update
+      ? {
+          update_id: ctx.update.update_id,
+          type: Object.keys(ctx.update).filter((k) => k !== "update_id")[0],
+          chat_id: ctx.chat?.id,
+          from_id: ctx.from?.id,
+        }
+      : null;
+    logger.error(
+      `Unknown error: ${e}, update: ${JSON.stringify(safeUpdateInfo)}`,
+    );
   }
 
   try {

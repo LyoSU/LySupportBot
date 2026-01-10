@@ -1,4 +1,4 @@
-import { transports, format, createLogger, Logger } from "winston"
+import { transports, format, createLogger, Logger } from "winston";
 
 const logger: Logger = createLogger({
   level: process.env.NODE_ENV === "production" ? "info" : "debug",
@@ -8,6 +8,6 @@ const logger: Logger = createLogger({
     }),
   ],
   exitOnError: true,
-})
+});
 
-export default logger
+export default logger;

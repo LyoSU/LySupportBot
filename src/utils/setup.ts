@@ -1,9 +1,6 @@
-import logger from "./logger";
 import handlers from "../handlers";
 import middlewares from "../middlewares";
 import transformers from "../transformers";
-import botCommands from "./bot-commands";
-import { UserFromGetMe } from "grammy/out/types";
 import { Bot } from "grammy";
 import { MyApi, MyContext } from "../types";
 

@@ -4,7 +4,7 @@ import { MyContext } from "../../types";
 import { isGroup } from "../../filters";
 
 async function setupChat(
-  ctx: MyContext & { chat: Chat.SupergroupChat | Chat.GroupChat }
+  ctx: MyContext & { chat: Chat.SupergroupChat | Chat.GroupChat },
 ) {
   if (!ctx.session.bot || !ctx.session.user) {
     return;

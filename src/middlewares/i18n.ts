@@ -1,13 +1,8 @@
 import fs from "fs";
 import { join, resolve } from "path";
-import { Context, NextFunction } from "grammy";
-import { MyContext } from "../types";
+import { Context } from "grammy";
 import { Fluent } from "@moebius/fluent";
-import {
-  useFluent,
-  FluentContextFlavor,
-  LocaleNegotiator,
-} from "@grammyjs/fluent";
+import { useFluent, LocaleNegotiator } from "@grammyjs/fluent";
 
 const appRoot = join(resolve(__dirname), "..", "..");
 const appLocales = join(appRoot, "locales");
@@ -16,7 +11,7 @@ const fluent = new Fluent();
 export const locales = fs
   .readdirSync(appLocales)
   .map((localeFilename) =>
-    localeFilename.substring(0, localeFilename.indexOf(".ftl"))
+    localeFilename.substring(0, localeFilename.indexOf(".ftl")),
   );
 export const isMultipleLocales = locales.length > 1;
 

@@ -3,7 +3,6 @@ import { MyContext } from "../types";
 
 import commands from "./commands";
 import callbackQueries from "./callbackQueries";
-import { logger } from "../utils";
 
 import userChat from "./user-chat";
 

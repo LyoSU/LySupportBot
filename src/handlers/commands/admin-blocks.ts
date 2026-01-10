@@ -1,24 +1,50 @@
-import { Bot, InlineKeyboard, Keyboard } from "grammy";
+import { Bot, InlineKeyboard } from "grammy";
+import { MessageEntity } from "grammy/types";
+import { Types } from "mongoose";
 import { MyContext } from "../../types";
 import { isGroup } from "../../filters/";
 import { type Conversation, createConversation } from "@grammyjs/conversations";
 import db from "../../database/models";
+import { logger } from "../../utils";
 
-async function sendBlock(ctx: MyContext, block: any) {
+interface BlockData {
+  text?: string;
+  entities?: MessageEntity[];
+  media?: string;
+  caption?: string;
+  caption_entities?: MessageEntity[];
+}
+
+interface BlockKeyboardButton {
+  name: string;
+  block?: string;
+}
+
+interface BlockDocument {
+  _id: Types.ObjectId;
+  name: string;
+  message: {
+    type: string;
+    data: BlockData;
+    keyboard?: BlockKeyboardButton[][];
+  };
+  blocks?: Array<{ _id: Types.ObjectId }>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function sendBlock(ctx: MyContext, blockDoc: any) {
+  const block = blockDoc as BlockDocument;
   const keyboard = new InlineKeyboard();
 
-  for (const row in block.message.keyboard) {
-    const buttons = block.message.keyboard[row];
-
-    keyboard.row();
-
-    for (const column in buttons) {
-      const button = buttons[column];
-
-      keyboard.add({
-        text: button.name,
-        callback_data: `block:${button.block}`,
-      });
+  if (block.message.keyboard) {
+    for (const row of block.message.keyboard) {
+      keyboard.row();
+      for (const button of row) {
+        keyboard.add({
+          text: button.name,
+          callback_data: `block:${button.block}`,
+        });
+      }
     }
   }
 
@@ -43,24 +69,26 @@ async function sendBlock(ctx: MyContext, block: any) {
       callback_data: `delete_block:${block._id}`,
     });
 
-  if (block.message.type === "text") {
-    await ctx.reply(block.message.data.text, {
+  const data = block.message.data;
+
+  if (block.message.type === "text" && data.text) {
+    await ctx.reply(data.text, {
       parse_mode: undefined,
-      entities: block.message.data.entities,
+      entities: data.entities,
       reply_markup: keyboard,
     });
-  } else if (block.message.type === "photo") {
-    await ctx.replyWithPhoto(block.message.data.media, {
+  } else if (block.message.type === "photo" && data.media) {
+    await ctx.replyWithPhoto(data.media, {
       parse_mode: undefined,
-      caption: block.message.data.caption,
-      caption_entities: block.message.data.caption_entities,
+      caption: data.caption,
+      caption_entities: data.caption_entities,
       reply_markup: keyboard,
     });
-  } else {
-    await ctx.replyWithDocument(block.message.data.media, {
+  } else if (data.media) {
+    await ctx.replyWithDocument(data.media, {
       parse_mode: undefined,
-      caption: block.message.data.caption,
-      caption_entities: block.message.data.caption_entities,
+      caption: data.caption,
+      caption_entities: data.caption_entities,
       reply_markup: keyboard,
     });
   }
@@ -72,7 +100,7 @@ async function mainBlock(ctx: MyContext) {
   }
 
   const mainBlock = await db.Blocks.findById(
-    ctx.session.bot?.settings?.mainBlock
+    ctx.session.bot?.settings?.mainBlock,
   );
 
   if (!mainBlock) {
@@ -112,9 +140,17 @@ async function createBlock(conversation: MyConversation, ctx: MyContext) {
 
   await ctx.reply(ctx.t("send_block_message"));
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let messageCtx = null as any;
 
-  let type: "text" | "animation" | "document" | "audio" | "photo" | "video" | undefined = undefined;
+  let type:
+    | "text"
+    | "animation"
+    | "document"
+    | "audio"
+    | "photo"
+    | "video"
+    | undefined = undefined;
 
   do {
     messageCtx = await conversation.waitFor("message");
@@ -175,20 +211,26 @@ async function createBlock(conversation: MyConversation, ctx: MyContext) {
   if (ctx.match[1] === "main") {
     bot.settings = {
       ...bot.settings,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mainBlock: block._id as any,
     };
     await bot.save();
   } else {
-    const parentBlock = await db.Blocks.findOne({ _id: ctx.match[1], bot: ctx.session.bot._id });
+    const parentBlock = await db.Blocks.findOne({
+      _id: ctx.match[1],
+      bot: ctx.session.bot._id,
+    });
 
     if (!parentBlock) {
       return ctx.reply(ctx.t("no_block"));
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     parentBlock.message.keyboard?.map((row: any) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       row.map((button: any) => {
-        console.log(button);
-      })
+        logger.info("Button:", button);
+      }),
     );
 
     parentBlock.message.keyboard ??= [];
@@ -199,14 +241,17 @@ async function createBlock(conversation: MyConversation, ctx: MyContext) {
       column = parentBlock.message.keyboard.length;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (parentBlock.message.keyboard as any[])[column] ??= [];
 
     let row = parseInt(ctx.match![3]);
 
     if (row < 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       row = (parentBlock.message.keyboard as any[])[column].length;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (parentBlock.message.keyboard as any[])[column][row] = {
       name: name,
       block: block._id,
@@ -214,6 +259,7 @@ async function createBlock(conversation: MyConversation, ctx: MyContext) {
 
     parentBlock.markModified("message.keyboard");
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (parentBlock.blocks as any[]).push(block._id);
 
     await parentBlock.save();
@@ -224,7 +270,10 @@ async function createBlock(conversation: MyConversation, ctx: MyContext) {
   return sendBlock(ctx, block);
 }
 
-async function deleteBlockWithChildren(blockId: string, maxDepth = 10): Promise<void> {
+async function deleteBlockWithChildren(
+  blockId: string,
+  maxDepth = 10,
+): Promise<void> {
   const toDelete: string[] = [blockId];
   const visited = new Set<string>();
   let depth = 0;
@@ -248,7 +297,9 @@ async function deleteBlockWithChildren(blockId: string, maxDepth = 10): Promise<
   }
 
   if (toDelete.length > 0) {
-    console.warn(`Block deletion stopped at depth ${maxDepth}, ${toDelete.length} blocks remaining`);
+    logger.warn(
+      `Block deletion stopped at depth ${maxDepth}, ${toDelete.length} blocks remaining`,
+    );
   }
 }
 
@@ -257,7 +308,10 @@ async function deleteBlock(ctx: MyContext) {
     return;
   }
 
-  const block = await db.Blocks.findOne({ _id: ctx.match[1], bot: ctx.session.bot._id });
+  const block = await db.Blocks.findOne({
+    _id: ctx.match[1],
+    bot: ctx.session.bot._id,
+  });
 
   if (!block) {
     return ctx.answerCallbackQuery(ctx.t("no_block"));
@@ -268,19 +322,25 @@ async function deleteBlock(ctx: MyContext) {
   });
 
   if (parentBlock) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     parentBlock.blocks = (parentBlock.blocks as any[]).filter(
-      (block: any) => block.toString() !== ctx.match![1]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (block: any) => block.toString() !== ctx.match![1],
     );
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let keyboard = parentBlock.message.keyboard as any[] | undefined;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     keyboard = keyboard?.filter((row: any) => {
       return (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         row.filter((button: any) => button.block?.toString() !== ctx.match![1])
           .length > 0
       );
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     keyboard = keyboard?.filter((row: any) => row.length > 0);
 
     parentBlock.message.keyboard = keyboard;
@@ -301,13 +361,13 @@ async function deleteBlock(ctx: MyContext) {
         $unset: {
           "settings.mainBlock": "",
         },
-      }
+      },
     );
   }
 
   await ctx.answerCallbackQuery(ctx.t("block_deleted"));
 
-  await ctx.deleteMessage().catch(() => { });
+  await ctx.deleteMessage().catch(() => {});
 }
 
 async function editBlockName(conversation: MyConversation, ctx: MyContext) {
@@ -316,7 +376,10 @@ async function editBlockName(conversation: MyConversation, ctx: MyContext) {
   }
 
   // Verify the block belongs to this bot before starting the conversation
-  const existingBlock = await db.Blocks.findOne({ _id: ctx.match[1], bot: ctx.session.bot._id });
+  const existingBlock = await db.Blocks.findOne({
+    _id: ctx.match[1],
+    bot: ctx.session.bot._id,
+  });
   if (!existingBlock) {
     return ctx.reply(ctx.t("no_block"));
   }
@@ -326,7 +389,10 @@ async function editBlockName(conversation: MyConversation, ctx: MyContext) {
   const textCtx = await conversation.waitFor(":text");
   const message = textCtx.message;
 
-  const block = await db.Blocks.findOne({ _id: ctx.match[1], bot: ctx.session.bot._id });
+  const block = await db.Blocks.findOne({
+    _id: ctx.match[1],
+    bot: ctx.session.bot._id,
+  });
 
   if (!block) {
     return ctx.reply(ctx.t("no_block"));
@@ -341,14 +407,12 @@ async function editBlockName(conversation: MyConversation, ctx: MyContext) {
   });
 
   for (const parentBlock of parentBlocks) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const keyboard = parentBlock.message.keyboard as any[] | undefined;
     if (keyboard) {
       for (let row = 0; row < keyboard.length; row++) {
         for (let column = 0; column < keyboard[row].length; column++) {
-          if (
-            keyboard[row][column].block?.toString() ===
-            ctx.match![1]
-          ) {
+          if (keyboard[row][column].block?.toString() === ctx.match![1]) {
             keyboard[row][column].name = message?.text ?? "";
           }
         }
@@ -371,7 +435,10 @@ async function editBlockData(conversation: MyConversation, ctx: MyContext) {
   }
 
   // Verify the block belongs to this bot before starting the conversation
-  const existingBlock = await db.Blocks.findOne({ _id: ctx.match[1], bot: ctx.session.bot._id });
+  const existingBlock = await db.Blocks.findOne({
+    _id: ctx.match[1],
+    bot: ctx.session.bot._id,
+  });
   if (!existingBlock) {
     return ctx.reply(ctx.t("no_block"));
   }
@@ -380,7 +447,14 @@ async function editBlockData(conversation: MyConversation, ctx: MyContext) {
 
   let messageCtx = null as any;
 
-  let type: "text" | "animation" | "document" | "audio" | "photo" | "video" | undefined = undefined;
+  let type:
+    | "text"
+    | "animation"
+    | "document"
+    | "audio"
+    | "photo"
+    | "video"
+    | undefined = undefined;
 
   do {
     messageCtx = await conversation.waitFor("message");
@@ -414,7 +488,10 @@ async function editBlockData(conversation: MyConversation, ctx: MyContext) {
     media = message[type].file_id;
   }
 
-  const block = await db.Blocks.findOne({ _id: ctx.match[1], bot: ctx.session.bot._id });
+  const block = await db.Blocks.findOne({
+    _id: ctx.match[1],
+    bot: ctx.session.bot._id,
+  });
 
   if (!block) {
     return ctx.reply(ctx.t("no_block"));
@@ -446,7 +523,7 @@ async function setup(bot: Bot<MyContext>) {
     if (!ctx.from) return false;
     try {
       const member = await ctx.getChatMember(ctx.from.id);
-      return ['creator', 'administrator'].includes(member.status);
+      return ["creator", "administrator"].includes(member.status);
     } catch {
       return false;
     }
@@ -458,7 +535,10 @@ async function setup(bot: Bot<MyContext>) {
 
   groupAdmin.command("blocks", mainBlock);
   groupAdmin.callbackQuery(/^block:([a-f0-9]{24})$/, async (ctx) => {
-    const block = await db.Blocks.findOne({ _id: ctx.match![1], bot: ctx.session.bot!._id });
+    const block = await db.Blocks.findOne({
+      _id: ctx.match![1],
+      bot: ctx.session.bot!._id,
+    });
 
     if (!block) {
       return ctx.answerCallbackQuery(ctx.t("no_block"));
@@ -471,7 +551,7 @@ async function setup(bot: Bot<MyContext>) {
     /^add_block:(main|[a-f0-9]{24}):(-?[0-9]\d*):(-?[0-9]\d*)$/,
     async (ctx) => {
       await ctx.conversation.enter("createBlock");
-    }
+    },
   );
 
   groupAdmin.callbackQuery(/^edit_block_data:([a-f0-9]{24})$/, async (ctx) => {

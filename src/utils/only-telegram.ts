@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { logger } from ".";
 
 // Telegram's official IP ranges for webhook requests
 const ACCEPTED_SUBNETS = ["149.154.160.0/20", "91.108.4.0/22"];
@@ -23,7 +24,7 @@ function ip4ToNum(ip: string): number {
       .reduce(
         (acc: number, octet: string, index: number) =>
           acc + (parseInt(octet, 10) << ((3 - index) * 8)),
-        0
+        0,
       ) >>> 0
   );
 }
@@ -50,7 +51,7 @@ function isFromTelegramSubnet(ip: string): boolean {
 function onlyAcceptSubnets(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void {
   const ipAddress = getClientIp(req);
   const isPostRequest = req.method === "POST";
@@ -60,8 +61,8 @@ function onlyAcceptSubnets(
   if (!VERIFY_TELEGRAM_IP) {
     if (isPostRequest && !isAcceptedSubnet) {
       // Log warning but don't block - secret_token is the primary auth method
-      console.warn(
-        `Warning: Request from non-Telegram IP ${ipAddress} - relying on secret_token auth`
+      logger.warn(
+        `Request from non-Telegram IP ${ipAddress} - relying on secret_token auth`,
       );
     }
     return next();
@@ -72,10 +73,10 @@ function onlyAcceptSubnets(
     return next();
   }
 
-  console.error(
+  logger.error(
     `Unauthorized request from ${ipAddress}, headers: ${JSON.stringify(
-      req.headers
-    )}, body: ${JSON.stringify(req.body)}`
+      req.headers,
+    )}, body: ${JSON.stringify(req.body)}`,
   );
   res.status(403).send("Forbidden");
 }

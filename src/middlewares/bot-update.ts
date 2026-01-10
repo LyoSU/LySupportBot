@@ -1,15 +1,15 @@
 import { NextFunction } from "grammy";
 import { Bot, Bots } from "../database/models/bots";
 import { MyContext } from "../types";
-import { generateWebhookSecret } from "../utils";
+import { generateWebhookSecret, logger } from "../utils";
 
 export const botUpdateMiddleware = async (
   ctx: MyContext,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { me } = ctx;
 
-  let params: Partial<Bot> = {
+  const params: Partial<Bot> = {
     telegram_id: me.id,
     name: me.first_name,
     username: me.username,
@@ -26,7 +26,7 @@ export const botUpdateMiddleware = async (
       bot = await Bots.findOneAndUpdate(
         { telegram_id: me.id },
         { $set: params },
-        { upsert: true, new: true }
+        { upsert: true, new: true },
       );
     } else if (!bot.webhookSecret) {
       // Existing bot without webhookSecret - generate one for migration
@@ -34,20 +34,20 @@ export const botUpdateMiddleware = async (
       bot = await Bots.findOneAndUpdate(
         { telegram_id: me.id },
         { $set: params },
-        { new: true }
+        { new: true },
       );
     } else {
       // Existing bot with webhookSecret - just update other fields
       bot = await Bots.findOneAndUpdate(
         { telegram_id: me.id },
         { $set: params },
-        { new: true }
+        { new: true },
       );
     }
 
     ctx.session.bot = bot;
   } catch (error) {
-    console.error("Error user", error);
+    logger.error("Error updating bot:", error);
     ctx.session.bot = null;
   }
 

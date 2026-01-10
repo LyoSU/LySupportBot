@@ -1,10 +1,11 @@
 import { NextFunction } from "grammy";
 import { User, Users } from "../database/models/users";
 import { MyContext } from "../types";
+import { logger } from "../utils";
 
 export const userUpdateMiddleware = async (
   ctx: MyContext,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { from } = ctx;
 
@@ -12,7 +13,7 @@ export const userUpdateMiddleware = async (
     return next();
   }
 
-  let params: Partial<User> = {
+  const params: Partial<User> = {
     telegram_id: from.id,
     first_name: from.first_name,
     last_name: from.last_name,
@@ -26,12 +27,12 @@ export const userUpdateMiddleware = async (
     const user = await Users.findOneAndUpdate(
       { telegram_id: from.id },
       { $set: params },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
 
     ctx.session.user = user;
   } catch (error) {
-    console.error("Error user", error);
+    logger.error("Error updating user:", error);
     ctx.session.user = null;
   }
 

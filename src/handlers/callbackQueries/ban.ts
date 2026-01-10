@@ -17,7 +17,7 @@ async function isGroupAdmin(ctx: MyContext): Promise<boolean> {
 
   try {
     const member = await ctx.getChatMember(ctx.from.id);
-    return ['creator', 'administrator'].includes(member.status);
+    return ["creator", "administrator"].includes(member.status);
   } catch {
     return false;
   }
@@ -29,7 +29,7 @@ async function banUser(ctx: MyContext) {
   }
 
   // Authorization check: verify user is an admin of the support group
-  if (!await isGroupAdmin(ctx)) {
+  if (!(await isGroupAdmin(ctx))) {
     if (ctx.callbackQuery) {
       return ctx.answerCallbackQuery("You must be an admin to ban users");
     }
@@ -79,12 +79,11 @@ async function banUser(ctx: MyContext) {
         ],
       },
     });
-
   }
 
   return ctx.reply(
     `User banned by <a href="tg://user?id=${ctx.from.id}">${escapeHtml(
-      ctx.from.first_name
+      ctx.from.first_name,
     )}</a>`,
     {
       message_thread_id: topic.thread_id,
@@ -98,7 +97,7 @@ async function banUser(ctx: MyContext) {
           ],
         ],
       },
-    }
+    },
   );
 }
 
@@ -108,11 +107,13 @@ async function unbanUser(ctx: MyContext) {
   }
 
   // Authorization check: verify user is an admin of the support group
-  if (!await isGroupAdmin(ctx)) {
+  if (!(await isGroupAdmin(ctx))) {
     if (ctx.callbackQuery) {
       return ctx.answerCallbackQuery("You must be an admin to unban users");
     }
-    return ctx.reply("You must be an admin of the support group to unban users");
+    return ctx.reply(
+      "You must be an admin of the support group to unban users",
+    );
   }
 
   const user = await db.Users.findOne({ telegram_id: ctx.match[1] });
@@ -151,11 +152,11 @@ async function unbanUser(ctx: MyContext) {
 
   return ctx.reply(
     `User unbanned by <a href="tg://user?id=${ctx.from.id}">${escapeHtml(
-      ctx.from.first_name
+      ctx.from.first_name,
     )}</a>`,
     {
       message_thread_id: topic.thread_id,
-    }
+    },
   );
 }
 

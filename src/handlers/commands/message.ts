@@ -1,12 +1,58 @@
-import { Bot } from "grammy";
-import { Chat, MessageReactionUpdated } from "@grammyjs/types";
+import { Bot, Api } from "grammy";
+import { Chat } from "@grammyjs/types";
 import { MyContext } from "../../types";
 import { isGroup, isPrivate } from "../../filters/";
 import db from "../../database/models";
 import { isDocument } from "@typegoose/typegoose";
 import OpenAI from "openai";
-import { MessageEntity } from "grammy/types"; // Add any necessary imports
-import { escapeHtml } from "../../utils";
+import { escapeHtml, logger } from "../../utils";
+
+type TelegramError = Error & { description?: string };
+
+import { MessageEntity, ReplyParameters } from "grammy/types";
+
+interface SendMessageOptions {
+  api: Api;
+  targetChatId: number;
+  sourceChatId: number;
+  messageId: number;
+  threadId: number;
+  isForward: boolean;
+  replyParams?: ReplyParameters;
+}
+
+async function sendOrForwardMessage(
+  options: SendMessageOptions,
+): Promise<{ message_id: number | null }> {
+  const {
+    api,
+    targetChatId,
+    sourceChatId,
+    messageId,
+    threadId,
+    isForward,
+    replyParams,
+  } = options;
+
+  try {
+    if (isForward) {
+      return await api.forwardMessage(targetChatId, sourceChatId, messageId, {
+        message_thread_id: threadId,
+      });
+    } else {
+      return await api.copyMessage(targetChatId, sourceChatId, messageId, {
+        message_thread_id: threadId,
+        reply_parameters: replyParams,
+      });
+    }
+  } catch (err) {
+    const error = err as TelegramError;
+    if (error.description?.includes("thread not found")) {
+      return { message_id: null };
+    }
+    throw error;
+  }
+}
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -14,15 +60,15 @@ const openai = new OpenAI({
 
 async function importanceRatingAI(
   text: string,
-  retries = 0
+  retries = 0,
 ): Promise<
   | {
-    importance: string;
-    category: string;
-  }
+      importance: string;
+      category: string;
+    }
   | {
-    error: string;
-  }
+      error: string;
+    }
 > {
   if (retries > 1) {
     return {
@@ -60,16 +106,12 @@ Send the result in a valid JSON format, making sure to escape characters if nece
       temperature: 0.0,
     })
     .catch((err) => {
-      console.error("OpenAI error:", err.message);
+      logger.error("OpenAI error:", err.message);
       return null;
     });
 
   // retry if failed
-  if (
-    !aiResponse ||
-    !aiResponse.choices ||
-    !aiResponse.choices[0]
-  ) {
+  if (!aiResponse || !aiResponse.choices || !aiResponse.choices[0]) {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     return importanceRatingAI(text, retries + 1);
   }
@@ -86,7 +128,7 @@ Send the result in a valid JSON format, making sure to escape characters if nece
   };
   try {
     aiResponseJson = JSON.parse(aiResponseText);
-  } catch (err) {
+  } catch (_err) {
     return importanceRatingAI(text, retries + 1);
   }
 
@@ -179,7 +221,9 @@ async function createTopic(ctx: MyContext) {
     })
     .catch((error) => {
       if (error.description.includes("not enough rights")) {
-        ctx.api.sendMessage(chatId!, ctx.t("not_enough_rights")).catch(() => { });
+        ctx.api
+          .sendMessage(chatId!, ctx.t("not_enough_rights"))
+          .catch(() => {});
       }
 
       throw new Error(error);
@@ -228,7 +272,7 @@ ${aiRating}
           ],
         ],
       },
-    }
+    },
   );
 
   const topic = await db.Topics.findOneAndUpdate(
@@ -239,7 +283,7 @@ ${aiRating}
         pin_message_id: mainMessage.message_id,
       },
     },
-    { upsert: true, new: true }
+    { upsert: true, new: true },
   );
 
   return topic;
@@ -262,7 +306,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
   });
 
   if (!topic) {
-    topic = await createTopic(ctx) ?? null;
+    topic = (await createTopic(ctx)) ?? null;
 
     if (!topic) {
       return;
@@ -273,7 +317,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     return ctx.reply("You are banned");
   }
 
-  let blockChain = [];
+  const blockChain = [];
 
   if (ctx.session.state.startParam) {
     if (ctx.session.state.startParam) {
@@ -301,7 +345,8 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     });
 
     if (ctx.session.bot.settings?.ai) {
-      let aiInputText = ctx?.message?.text || ctx?.message?.caption || "[no text]";
+      let aiInputText =
+        ctx?.message?.text || ctx?.message?.caption || "[no text]";
 
       // Truncate text to prevent excessively long inputs to OpenAI
       if (aiInputText.length > MAX_MESSAGE_LENGTH) {
@@ -323,19 +368,13 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
       .sendMessage(chatId, messageText, {
         message_thread_id: topic.thread_id,
       })
-      .catch(() => { })
+      .catch(() => {})
       .finally(() => {
         ctx.session.state.blocksChain = [];
       });
   }
 
-  let sendMethod = "copyMessage";
-
-  if (ctx.message.forward_origin) {
-    sendMethod = "forwardMessage";
-  }
-
-  let replyTo = null;
+  let replyTo: number | null = null;
 
   if (ctx.message.reply_to_message) {
     const type = ctx.message.reply_to_message.from?.is_bot ? "to" : "from";
@@ -354,50 +393,49 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     }
   }
 
-  let result = await (ctx.api as any)[sendMethod](
-    chatId,
-    ctx.chat.id,
-    ctx.message.message_id,
-    {
-      message_thread_id: topic.thread_id,
-      reply_parameters: {
+  const replyParams: ReplyParameters | undefined = replyTo
+    ? {
         message_id: replyTo,
         allow_sending_without_reply: true,
         quote: ctx.message?.quote?.text,
         quote_entities: ctx.message?.quote?.entities,
         quote_position: ctx.message?.quote?.position,
-      },
-    }
-  ).catch((error: any) => {
-    if (error.description.includes("thread not found")) {
-      return {
-        message_id: null,
-      };
-    }
+      }
+    : undefined;
 
-    throw new Error(error);
+  let result = await sendOrForwardMessage({
+    api: ctx.api,
+    targetChatId: chatId,
+    sourceChatId: ctx.chat.id,
+    messageId: ctx.message.message_id,
+    threadId: topic.thread_id,
+    isForward: !!ctx.message.forward_origin,
+    replyParams,
   });
 
-  if (result?.message_id === null) {
-    topic = await createTopic(ctx) ?? null;
+  if (result.message_id === null) {
+    topic = (await createTopic(ctx)) ?? null;
 
     if (!topic) {
       return;
     }
 
-    result = await (ctx.api as any)[sendMethod](
-      chatId,
-      ctx.chat.id,
-      ctx.message.message_id,
-      {
-        message_thread_id: topic.thread_id,
-      }
-    );
+    result = await sendOrForwardMessage({
+      api: ctx.api,
+      targetChatId: chatId,
+      sourceChatId: ctx.chat.id,
+      messageId: ctx.message.message_id,
+      threadId: topic.thread_id,
+      isForward: !!ctx.message.forward_origin,
+    });
   }
 
   if (!result) {
     return ctx.reply("🚫 This message cannot be sent", {
-      reply_to_message_id: ctx.message.message_id,
+      reply_parameters: {
+        message_id: ctx.message.message_id,
+        allow_sending_without_reply: true,
+      },
     });
   }
 
@@ -430,12 +468,12 @@ async function anyPrivateReaction(ctx: MyContext) {
           chat_id: ctx.chat?.id,
           message_id: ctx.messageReaction.message_id,
         },
-      }
-    ]
+      },
+    ],
   });
 
   if (!message) {
-    console.log("Message not found for reaction");
+    logger.info("Message not found for reaction");
     return;
   }
 
@@ -446,10 +484,10 @@ async function anyPrivateReaction(ctx: MyContext) {
     await ctx.api.setMessageReaction(
       targetChat.chat_id,
       targetChat.message_id,
-      ctx.messageReaction.new_reaction
+      ctx.messageReaction.new_reaction,
     );
   } catch (error) {
-    console.error("Failed to set reaction:", error);
+    logger.error("Failed to set reaction:", error);
   }
 }
 
@@ -469,12 +507,12 @@ async function anyGroupReaction(ctx: MyContext) {
           chat_id: ctx.chat?.id,
           message_id: ctx.messageReaction.message_id,
         },
-      }
-    ]
+      },
+    ],
   });
 
   if (!message) {
-    console.log("Message not found for reaction");
+    logger.info("Message not found for reaction");
     return;
   }
 
@@ -485,14 +523,16 @@ async function anyGroupReaction(ctx: MyContext) {
     await ctx.api.setMessageReaction(
       targetChat.chat_id,
       targetChat.message_id,
-      ctx.messageReaction.new_reaction
+      ctx.messageReaction.new_reaction,
     );
   } catch (error) {
-    console.error("Failed to set reaction:", error);
+    logger.error("Failed to set reaction:", error);
   }
 }
 
-async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat | Chat.SupergroupChat }) {
+async function anyGroupMessage(
+  ctx: MyContext & { chat: Chat.GroupChat | Chat.SupergroupChat },
+) {
   if (!ctx.session.bot || !ctx.message) {
     return;
   }
@@ -515,7 +555,10 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat | Chat.Su
 
   if (ctx.message?.text?.startsWith("/")) {
     return ctx.reply(ctx.t("unknown_command"), {
-      reply_to_message_id: ctx.message.message_id,
+      reply_parameters: {
+        message_id: ctx.message.message_id,
+        allow_sending_without_reply: true,
+      },
     });
   }
 
@@ -546,7 +589,7 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat | Chat.Su
         quote: ctx.message?.quote?.text,
         quote_entities: ctx.message?.quote?.entities,
         quote_position: ctx.message?.quote?.position,
-      }
+      },
     })
     .catch(async (error) => {
       if (error?.description?.includes("blocked")) {
@@ -554,7 +597,7 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat | Chat.Su
           .reply("User blocked the bot", {
             message_thread_id: ctx.message?.message_thread_id,
           })
-          .catch(() => { });
+          .catch(() => {});
       } else if (error.description.includes("can't be copied")) {
         return;
       }
@@ -564,7 +607,10 @@ async function anyGroupMessage(ctx: MyContext & { chat: Chat.GroupChat | Chat.Su
 
   if (!resultCopy) {
     return ctx.reply("🚫 This message cannot be sent", {
-      reply_to_message_id: ctx.message.message_id,
+      reply_parameters: {
+        message_id: ctx.message.message_id,
+        allow_sending_without_reply: true,
+      },
     });
   }
 
@@ -589,7 +635,10 @@ async function editMessage(ctx: MyContext) {
 
   if (ctx.session.bot?.settings?.disable_message_editing) {
     return ctx.reply(ctx.t("editing_disabled"), {
-      reply_to_message_id: ctx.editedMessage.message_id,
+      reply_parameters: {
+        message_id: ctx.editedMessage.message_id,
+        allow_sending_without_reply: true,
+      },
     });
   }
 
@@ -615,7 +664,7 @@ async function editMessage(ctx: MyContext) {
         {
           entities: ctx.editedMessage.entities,
           parse_mode: undefined,
-        }
+        },
       )
       .catch((error) => {
         if (error.description.includes("message is not modified")) {
@@ -625,7 +674,13 @@ async function editMessage(ctx: MyContext) {
         throw new Error(error);
       });
   } else {
-    let type: "animation" | "document" | "audio" | "photo" | "video" | undefined = undefined;
+    let type:
+      | "animation"
+      | "document"
+      | "audio"
+      | "photo"
+      | "video"
+      | undefined = undefined;
 
     if (ctx.editedMessage.animation) {
       type = "animation";
@@ -643,8 +698,11 @@ async function editMessage(ctx: MyContext) {
       return ctx.reply(
         "🚫 This message type cannot be edited yet, try sending it again",
         {
-          reply_to_message_id: ctx.editedMessage.message_id,
-        }
+          reply_parameters: {
+            message_id: ctx.editedMessage.message_id,
+            allow_sending_without_reply: true,
+          },
+        },
       );
     }
 

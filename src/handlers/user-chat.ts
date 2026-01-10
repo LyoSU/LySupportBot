@@ -3,6 +3,7 @@ import { Chat } from "@grammyjs/types";
 import { MyContext } from "../types";
 import { isPrivate } from "../filters/";
 import db from "../database/models";
+import { logger } from "../utils";
 
 async function userChat(ctx: MyContext & { chat: Chat.PrivateChat }) {
   if (!ctx.session.bot || !ctx.session.user) {
@@ -31,12 +32,14 @@ async function userChat(ctx: MyContext & { chat: Chat.PrivateChat }) {
     .editForumTopic(topic.bot.chat_id, topic.thread_id, {
       icon_custom_emoji_id: stickerEmoji ? stickerEmoji.custom_emoji_id : "",
     })
-    .catch(console.error);
+    .catch((error) => logger.error("Failed to edit forum topic:", error));
 }
 
 async function deleteSystemMessages(ctx: MyContext, next: NextFunction) {
   if (ctx.message?.from?.is_bot && ctx.message?.forum_topic_edited) {
-    await ctx.deleteMessage().catch(console.error);
+    await ctx
+      .deleteMessage()
+      .catch((error) => logger.error("Failed to delete message:", error));
   }
 
   return next();
