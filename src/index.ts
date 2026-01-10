@@ -124,22 +124,28 @@ async function handleBotRequest(
   }
 
   if (!bot.token) {
+    logger.warn(`Bot ${bot.telegram_id} has no token`);
     res.status(401).send("Unauthorized");
     return;
   }
 
+  logger.info(`Creating gramBot for ${bot.telegram_id}`);
   const gramBot = new Bot<MyContext, MyApi>(bot.token);
 
   try {
+    logger.info(`Running setup for ${bot.telegram_id}`);
     await setup(gramBot);
 
     if (!gramBot.botInfo) {
+      logger.warn(`Bot ${bot.telegram_id} has no botInfo after setup`);
       res.status(401).send("Unauthorized");
       return;
     }
 
+    logger.info(`Calling webhookCallback for ${bot.telegram_id}`);
     await webhookCallback(gramBot, "express")(req, res);
   } catch (error) {
+    logger.error(`Error handling request for bot ${bot.telegram_id}:`, error);
     await errorHandler(error as BotError<MyContext>, res);
   }
 }
