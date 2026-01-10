@@ -7,6 +7,12 @@ export const botUpdateMiddleware = async (
   ctx: MyContext,
   next: NextFunction,
 ) => {
+  // Skip for updates without from (chat_boost, removed_chat_boost, message_reaction_count)
+  // These updates are anonymous and don't have session
+  if (!ctx.from) {
+    return next();
+  }
+
   const { me } = ctx;
 
   const params: Partial<Bot> = {
