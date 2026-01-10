@@ -83,14 +83,19 @@ async function handleBotRequest(
   // Fallback authentication: query token (deprecated, for backward compatibility during migration)
   const queryToken = req.query.token as string | undefined;
 
+  // Debug logging
+  logger.info(`Auth attempt - secretToken: ${secretToken ? secretToken.substring(0, 8) + '...' : 'undefined'}, queryToken: ${queryToken ? 'present' : 'undefined'}`);
+
   let bot;
 
   if (secretToken) {
     // Secure authentication via webhook secret header
     bot = await db.Bots.findOne({ webhookSecret: secretToken });
 
+    logger.info(`Bot lookup by webhookSecret: ${bot ? `found (id: ${bot.telegram_id})` : 'NOT FOUND'}`);
+
     if (!bot) {
-      logger.warn("Invalid webhook secret token received");
+      logger.warn(`Invalid webhook secret token received: ${secretToken.substring(0, 8)}...`);
       res.status(401).send("Unauthorized");
       return;
     }
