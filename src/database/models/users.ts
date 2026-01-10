@@ -14,6 +14,9 @@ export class User {
   public language_code?: string;
 
   @prop()
+  public locale?: string;
+
+  @prop()
   public last_activity_at?: Date;
 
   @prop({ default: false })

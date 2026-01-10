@@ -1,10 +1,10 @@
 import { prop, getModelForClass, Ref } from "@typegoose/typegoose";
 import { User } from "./users";
 
-// Bot settings interface
+// Bot settings interface - must be in sync with LySupportCreator
 export interface BotSettings {
   welcome_message?: {
-    default: string;
+    default?: string;
   };
   mainBlock?: string;
   minWords?: number;
@@ -25,13 +25,13 @@ export class Bot {
   @prop()
   public token?: string;
 
-  @prop({ ref: () => User, required: true, index: true })
-  public owner!: Ref<User>;
+  @prop({ ref: () => User, index: true })
+  public owner?: Ref<User>;
 
   @prop()
   public chat_id?: number;
 
-  @prop()
+  @prop({ default: true })
   public is_active?: boolean;
 
   @prop({ type: () => Object })

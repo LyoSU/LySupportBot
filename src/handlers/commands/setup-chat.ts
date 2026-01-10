@@ -10,7 +10,11 @@ async function setupChat(
     return;
   }
 
-  if (ctx.session.bot.owner.toString() !== ctx.session.user.id.toString()) {
+  // Check owner permission (main bot without owner allows anyone, child bots require owner)
+  if (
+    ctx.session.bot.owner &&
+    ctx.session.bot.owner.toString() !== ctx.session.user.id.toString()
+  ) {
     return ctx.reply(ctx.t("not_allowed"));
   }
 
