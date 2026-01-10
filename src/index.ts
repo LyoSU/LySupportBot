@@ -7,7 +7,6 @@ import { Bot, BotError } from "grammy";
 import { MyContext, MyApi } from "./types";
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { webhookCallback } from "grammy";
 import {
   allowedUpdates,
   logger,
@@ -142,15 +141,12 @@ async function handleBotRequest(
       return;
     }
 
-    logger.info(`Calling webhookCallback for ${bot.telegram_id}, body: ${JSON.stringify(req.body)?.substring(0, 200)}`);
-    await webhookCallback(gramBot, "express")(req, res);
-    logger.info(`webhookCallback completed for ${bot.telegram_id}, headersSent: ${res.headersSent}, statusCode: ${res.statusCode}`);
+    logger.info(`Calling handleUpdate for ${bot.telegram_id}, body: ${JSON.stringify(req.body)?.substring(0, 200)}`);
 
-    // Ensure response is sent
-    if (!res.headersSent) {
-      logger.warn(`Response not sent for ${bot.telegram_id}, sending 200`);
-      res.status(200).send("ok");
-    }
+    await gramBot.handleUpdate(req.body);
+
+    logger.info(`handleUpdate completed for ${bot.telegram_id}`);
+    res.status(200).send("ok");
   } catch (error) {
     logger.error(`Error handling request for bot ${bot.telegram_id}:`, error);
     await errorHandler(error as BotError<MyContext>, res);
