@@ -144,7 +144,7 @@ async function handleBotRequest(
 
     logger.info(`Calling webhookCallback for ${bot.telegram_id}, body: ${JSON.stringify(req.body)?.substring(0, 200)}`);
     await webhookCallback(gramBot, "express")(req, res);
-    logger.info(`webhookCallback completed for ${bot.telegram_id}, headersSent: ${res.headersSent}`);
+    logger.info(`webhookCallback completed for ${bot.telegram_id}, headersSent: ${res.headersSent}, statusCode: ${res.statusCode}`);
 
     // Ensure response is sent
     if (!res.headersSent) {
