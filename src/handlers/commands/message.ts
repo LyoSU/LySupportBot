@@ -413,11 +413,6 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
       }
     : undefined;
 
-  // Send message to topic (with strict reply - no fallback to avoid sending to General)
-  const strictReplyParams: ReplyParameters | undefined = replyParams
-    ? { ...replyParams, allow_sending_without_reply: false }
-    : undefined;
-
   let result = await sendOrForwardMessage({
     api: ctx.api,
     targetChatId: chatId,
@@ -425,7 +420,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     messageId: ctx.message.message_id,
     threadId: topic.thread_id,
     isForward: !!ctx.message.forward_origin,
-    replyParams: strictReplyParams,
+    replyParams: replyParams,
   });
 
   if (result.threadDeleted) {
