@@ -21,9 +21,15 @@ interface SendMessageOptions {
   replyParams?: ReplyParameters;
 }
 
+interface SendResult {
+  message_id: number | null;
+  threadDeleted?: boolean;
+  replyDeleted?: boolean;
+}
+
 async function sendOrForwardMessage(
   options: SendMessageOptions,
-): Promise<{ message_id: number | null }> {
+): Promise<SendResult> {
   const {
     api,
     targetChatId,
@@ -47,8 +53,12 @@ async function sendOrForwardMessage(
     }
   } catch (err) {
     const error = err as TelegramError;
-    if (error.description?.includes("thread not found")) {
-      return { message_id: null };
+    const desc = error.description ?? "";
+    if (desc.includes("thread not found")) {
+      return { message_id: null, threadDeleted: true };
+    }
+    if (desc.includes("reply message not found")) {
+      return { message_id: null, replyDeleted: true };
     }
     throw error;
   }
@@ -403,6 +413,11 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
       }
     : undefined;
 
+  // Send message to topic (with strict reply - no fallback to avoid sending to General)
+  const strictReplyParams: ReplyParameters | undefined = replyParams
+    ? { ...replyParams, allow_sending_without_reply: false }
+    : undefined;
+
   let result = await sendOrForwardMessage({
     api: ctx.api,
     targetChatId: chatId,
@@ -410,16 +425,21 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     messageId: ctx.message.message_id,
     threadId: topic.thread_id,
     isForward: !!ctx.message.forward_origin,
-    replyParams,
+    replyParams: strictReplyParams,
   });
 
-  if (result.message_id === null) {
+  if (result.threadDeleted) {
+    // Thread was deleted - remove old topic record and create new one
+    await db.Topics.deleteOne({ _id: topic._id });
+    logger.info(`Deleted stale topic ${topic._id} for user ${ctx.from?.id}`);
+
     topic = (await createTopic(ctx)) ?? null;
 
     if (!topic) {
       return;
     }
 
+    // Send to new topic (no reply since it's a new topic)
     result = await sendOrForwardMessage({
       api: ctx.api,
       targetChatId: chatId,
@@ -427,6 +447,17 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
       messageId: ctx.message.message_id,
       threadId: topic.thread_id,
       isForward: !!ctx.message.forward_origin,
+    });
+  } else if (result.replyDeleted) {
+    // Reply target was deleted - resend without reply
+    result = await sendOrForwardMessage({
+      api: ctx.api,
+      targetChatId: chatId,
+      sourceChatId: ctx.chat.id,
+      messageId: ctx.message.message_id,
+      threadId: topic.thread_id,
+      isForward: !!ctx.message.forward_origin,
+      // No replyParams - the original message was deleted
     });
   }
 
