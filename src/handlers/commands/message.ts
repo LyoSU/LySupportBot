@@ -413,6 +413,28 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
       }
     : undefined;
 
+  // Check if topic still exists by trying to reopen it
+  // If topic was deleted, this will throw an error
+  let topicDeleted = false;
+  await ctx.api.reopenForumTopic(chatId, topic.thread_id).catch((err) => {
+    const desc = (err as TelegramError).description ?? "";
+    if (desc.includes("TOPIC_ID_INVALID") || desc.includes("TOPIC_DELETED") || desc.includes("not found")) {
+      topicDeleted = true;
+    }
+  });
+
+  if (topicDeleted) {
+    // Topic was deleted - remove old record and create new one
+    await db.Topics.deleteOne({ _id: topic._id });
+    logger.info(`Deleted stale topic ${topic._id} for user ${ctx.from?.id}`);
+
+    topic = (await createTopic(ctx)) ?? null;
+
+    if (!topic) {
+      return;
+    }
+  }
+
   let result = await sendOrForwardMessage({
     api: ctx.api,
     targetChatId: chatId,
@@ -423,27 +445,7 @@ async function anyPrivateMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
     replyParams: replyParams,
   });
 
-  if (result.threadDeleted) {
-    // Thread was deleted - remove old topic record and create new one
-    await db.Topics.deleteOne({ _id: topic._id });
-    logger.info(`Deleted stale topic ${topic._id} for user ${ctx.from?.id}`);
-
-    topic = (await createTopic(ctx)) ?? null;
-
-    if (!topic) {
-      return;
-    }
-
-    // Send to new topic (no reply since it's a new topic)
-    result = await sendOrForwardMessage({
-      api: ctx.api,
-      targetChatId: chatId,
-      sourceChatId: ctx.chat.id,
-      messageId: ctx.message.message_id,
-      threadId: topic.thread_id,
-      isForward: !!ctx.message.forward_origin,
-    });
-  } else if (result.replyDeleted) {
+  if (result.replyDeleted) {
     // Reply target was deleted - resend without reply
     result = await sendOrForwardMessage({
       api: ctx.api,
